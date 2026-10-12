@@ -93,7 +93,7 @@ docker run -d --name mylifeos-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=my
 |---|---|---|
 | `DATABASE_URL` | oui | Connexion PostgreSQL |
 | `AUTH_SECRET` | oui | Secret de signature des sessions (≥ 16 caractères, idéalement `openssl rand -base64 32`) |
-| `DATA_ENCRYPTION_KEY` | oui | 32 octets en base64 pour chiffrer les données de santé. **À sauvegarder** : sans elle, les médicaments enregistrés deviennent illisibles. |
+| `DATA_ENCRYPTION_KEY` | oui | Clé de chiffrement des données de santé (idéalement `openssl rand -base64 32` ; toute valeur aléatoire d'au moins 16 caractères fonctionne, par ex. le bouton « Generate » de Render). **À sauvegarder** : sans elle, les médicaments enregistrés deviennent illisibles. |
 | `APP_TIMEZONE` | recommandé | Ton fuseau (ex. `Europe/Paris`). Les serveurs d'hébergement tournent souvent en UTC : cette variable garantit que « aujourd'hui » et « maintenant » correspondent à ton heure. |
 | `ANTHROPIC_API_KEY` | non | Active la compréhension avancée de l'assistant via Claude |
 | `ANTHROPIC_MODEL` | non | Modèle Claude (par défaut `claude-opus-5-5`) |
@@ -111,7 +111,16 @@ docker run -d --name mylifeos-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=my
 4. Commande de build : `npx prisma migrate deploy && npm run build`.
 5. Déploie, puis ouvre `/setup` pour créer ton compte.
 
-### Option B — Serveur / VPS (Docker, Render, Railway, Fly.io…)
+### Option B — Render
+
+1. **New → PostgreSQL** : crée la base, puis copie son **Internal Database URL**.
+2. **New → Web Service** : connecte le dépôt GitHub, branche à déployer, *Runtime* Node.
+3. *Build Command* : `npm install && npx prisma migrate deploy && npm run build`
+4. *Start Command* : `npm start`
+5. Onglet **Environment** : `DATABASE_URL` (Internal Database URL), `AUTH_SECRET` (Generate), `DATA_ENCRYPTION_KEY` (Generate), `APP_TIMEZONE=Europe/Paris`, `NODE_VERSION=22`, et facultativement `ANTHROPIC_API_KEY`.
+6. Déploie, puis ouvre `https://<ton-service>.onrender.com/setup`.
+
+### Option C — Serveur / VPS (Docker, Railway, Fly.io…)
 
 ```bash
 npm ci

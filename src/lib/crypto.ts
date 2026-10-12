@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 // Chiffrement applicatif AES-256-GCM des données de santé.
 // Format stocké : "v1:<iv base64>:<tag base64>:<données base64>"
@@ -6,9 +6,10 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 function getKey(): Buffer {
   const raw = process.env.DATA_ENCRYPTION_KEY;
   if (!raw) throw new Error("DATA_ENCRYPTION_KEY manquante : impossible de chiffrer les données de santé.");
+  if (raw.length < 16) throw new Error("DATA_ENCRYPTION_KEY trop courte (16 caractères minimum).");
   const key = Buffer.from(raw, "base64");
-  if (key.length !== 32) throw new Error("DATA_ENCRYPTION_KEY doit contenir 32 octets encodés en base64 (openssl rand -base64 32).");
-  return key;
+  // 32 octets en base64 : utilisés tels quels ; sinon (ex. valeur générée par l'hébergeur) on dérive une clé SHA-256.
+  return key.length === 32 ? key : createHash("sha256").update(raw).digest();
 }
 
 export function encrypt(plain: string): string {
