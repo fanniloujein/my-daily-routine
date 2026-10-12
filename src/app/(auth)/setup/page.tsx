@@ -20,7 +20,7 @@ export default function SetupPage() {
     api<{ signupAllowed: boolean; authenticated: boolean }>("/api/auth/status").then((s) => {
       if (s.authenticated) router.replace("/");
       setBlocked(!s.signupAllowed);
-    }).catch(() => {});
+    }).catch(() => setError("L'application n'arrive pas à joindre sa base de données. Ouvre /api/health pour voir ce qu'il faut corriger."));
   }, [router]);
 
   async function submit(e: React.FormEvent) {
