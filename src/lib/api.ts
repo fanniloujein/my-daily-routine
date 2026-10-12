@@ -34,8 +34,18 @@ export function errorResponse(e: unknown) {
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
     return NextResponse.json({ error: "Élément introuvable" }, { status: 404 });
   }
-  console.error(e);
-  return NextResponse.json({ error: "Une erreur inattendue est survenue. Réessaie dans un instant." }, { status: 500 });
+  if (e instanceof Prisma.PrismaClientKnownRequestError && (e.code === "P2021" || e.code === "P2022")) {
+    return NextResponse.json(
+      { error: "La base de données n'est pas à jour (tables manquantes). Redéploie l'application : « npm start » applique les migrations automatiquement. Diagnostic : /api/health" },
+      { status: 503 },
+    );
+  }
+  if (e instanceof Prisma.PrismaClientInitializationError || (e instanceof Prisma.PrismaClientKnownRequestError && e.code.startsWith("P1"))) {
+    return NextResponse.json({ error: "Base de données inaccessible pour le moment. Réessaie dans un instant. Diagnostic : /api/health" }, { status: 503 });
+  }
+  const ref = Math.random().toString(36).slice(2, 8).toUpperCase();
+  console.error(`[erreur ${ref}]`, e);
+  return NextResponse.json({ error: `Une erreur inattendue est survenue (réf. ${ref}). Réessaie dans un instant ; si cela persiste, cherche « ${ref} » dans les Logs.` }, { status: 500 });
 }
 
 export async function body<S extends ZodTypeAny>(req: Request, schema: S): Promise<output<S>> {

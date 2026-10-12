@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Bell, BookOpenCheck, CalendarDays, ChartColumn, Clapperboard, Code, Dumbbell, GraduationCap, HeartPulse, Languages,
   LayoutDashboard, LogOut, Menu, MessagesSquare, Monitor, Moon, Plus, Settings, Sun, Tags, X, Zap, ListTodo, FolderKanban, Pill,
@@ -47,6 +47,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.removeItem("mlos-reloaded");
+      } catch {}
+    }, 5000);
+    return () => clearTimeout(t);
+  }, []);
   const router = useRouter();
   const { data: me } = useMe();
   const { pref, set } = useTheme();

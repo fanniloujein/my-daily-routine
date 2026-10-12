@@ -20,10 +20,11 @@ const schema = z.object({
   date: dateStr,
   blocks: z.array(block).max(200),
   postponed: z.array(z.object({ id: z.string(), occurrenceDate: dateStr })).max(200),
+  unplaced: z.array(z.string()).max(200).default([]),
 });
 
 /** Applique la proposition validée (et éventuellement ajustée) par l'utilisatrice. */
 export const POST = route(async ({ req, user }) => {
   const d = await body(req, schema);
-  return applyPlan(user, d.date, d.blocks, d.postponed);
+  return applyPlan(user, d.date, d.blocks, d.postponed, d.unplaced);
 });

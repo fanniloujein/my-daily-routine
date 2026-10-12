@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Coffee, Feather, Moon, Sparkles, Utensils, Wand2, X } from "lucide-react";
-import { Button, Modal, Notice, Segmented, Spinner, useUi } from "@/components/ui";
+import { Button, Modal, Notice, Segmented, Spinner, Toggle, useUi } from "@/components/ui";
 import { api, cx, fmtDateLong, refreshAll } from "@/lib/client";
 import { addMinutesToTime, formatDuration, formatTime, timeToMin } from "@/lib/dates";
 import type { PlanBlock, PlanResult } from "@/lib/planner";
@@ -22,16 +22,17 @@ export function PlanDialog({ open, onClose, date, defaultEnergy, light: lightIni
   const { toast } = useUi();
   const [energy, setEnergy] = useState(defaultEnergy ?? 3);
   const [light, setLight] = useState(lightInit);
+  const [reshuffle, setReshuffle] = useState(true);
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [blocks, setBlocks] = useState<PlanBlock[]>([]);
   const [postponed, setPostponed] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
 
-  async function generate(e = energy, l = light) {
+  async function generate(e = energy, l = light, r = reshuffle) {
     setLoading(true);
     try {
-      const p = await api<PlanResult>("/api/planner", { body: { date, energy: e, light: l } });
+      const p = await api<PlanResult>("/api/planner", { body: { date, energy: e, light: l, reshuffle: r } });
       setPlan(p);
       setBlocks(p.blocks);
       setPostponed(Object.fromEntries(p.postponed.map((x) => [`${x.id}|${x.occurrenceDate}`, true])));
@@ -68,7 +69,13 @@ export function PlanDialog({ open, onClose, date, defaultEnergy, light: lightIni
     try {
       const toPostpone = plan.postponed.filter((p) => postponed[`${p.id}|${p.occurrenceDate}`]).map((p) => ({ id: p.id, occurrenceDate: p.occurrenceDate }));
       const r = await api<{ updated: number; created: number; postponed: number }>("/api/planner/apply", {
-        body: { date, blocks: blocks.filter((b) => b.kind === "task" || b.kind === "suggestion"), postponed: toPostpone },
+        body: {
+          date,
+          blocks: blocks.filter((b) => b.kind === "task" || b.kind === "suggestion"),
+          postponed: toPostpone,
+          // tâches retirées à la main ou non placées : elles redeviennent « sans horaire »
+          unplaced: [...plan.notPlaced.map((n) => n.id), ...plan.blocks.filter((b) => b.kind === "task" && b.refId && !blocks.some((x) => x.key === b.key)).map((b) => b.refId!)],
+        },
       });
       await refreshAll();
       toast(`Planning appliqué : ${r.updated + r.created} créneau(x), ${r.postponed} report(s). Tu peux tout modifier ensuite.`);
@@ -137,6 +144,16 @@ export function PlanDialog({ open, onClose, date, defaultEnergy, light: lightIni
             { value: "normal", label: "Planning adapté" },
             { value: "light", label: <span className="inline-flex items-center gap-1"><Feather className="h-3 w-3" /> Journée légère</span> },
           ]}
+        />
+
+        <Toggle
+          checked={reshuffle}
+          onChange={(v) => {
+            setReshuffle(v);
+            generate(energy, light, v);
+          }}
+          label="Réorganiser aussi les tâches déjà placées"
+          description="Les rendez-vous fixes, séances de cours, activités récurrentes et le passé ne bougent jamais"
         />
 
         {loading && (

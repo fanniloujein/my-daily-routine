@@ -208,6 +208,37 @@ export default function SettingsPage() {
               </Button>
             </div>
             <div className="space-y-2 border-t border-line/60 pt-3">
+              <p className="font-medium text-ink">Repartir de zéro dans le planning</p>
+              <p className="text-xs text-muted">Supprime des activités sans toucher à tes élèves, projets, cartes d&apos;allemand, médicaments ni catégories. Pense à exporter avant.</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    ["done", "Activités terminées et passées", "Les activités terminées ou dont la date est passée seront supprimées."],
+                    ["future", "Activités à venir", "Toutes les activités à partir d'aujourd'hui, y compris les activités récurrentes, seront supprimées."],
+                    ["all", "Toutes les activités", "Tout ton planning sera vidé. Tes élèves, projets, cartes, médicaments et catégories sont conservés."],
+                  ] as const
+                ).map(([scope, label, msg]) => (
+                  <Button
+                    key={scope}
+                    size="sm"
+                    variant={scope === "all" ? "danger" : "secondary"}
+                    onClick={async () => {
+                      if (!(await confirm({ title: `Supprimer : ${label.toLowerCase()} ?`, message: `${msg} Cette action est définitive.`, danger: true, confirmLabel: "Supprimer" }))) return;
+                      try {
+                        const r = await api<{ count: number }>("/api/activities/clear", { body: { scope } });
+                        await refreshAll();
+                        toast(`${r.count} activité(s) supprimée(s)`);
+                      } catch (e) {
+                        toast(e instanceof Error ? e.message : "Erreur", "danger");
+                      }
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 border-t border-line/60 pt-3">
               <p className="text-ink-2">Données de démonstration : {demo.data?.hasDemo ? "présentes" : "absentes"}.</p>
               <div className="flex flex-wrap gap-2">
                 {demo.data?.hasDemo ? (

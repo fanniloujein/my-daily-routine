@@ -7,6 +7,7 @@ import { ActivityItem } from "@/components/activity/ActivityItem";
 import { useActivityEditor } from "@/components/activity/ActivityEditorContext";
 import { draftFromOccurrence } from "@/components/activity/ActivityForm";
 import { PlanDialog } from "@/components/PlanDialog";
+import { BulkBar, SelectBox } from "@/components/activity/BulkBar";
 import { ApiError, api, cx, fmtDateLong, refreshAll } from "@/lib/client";
 import { useCategories, useOccurrences, type Occurrence } from "@/lib/hooks";
 import { addDays, addMonths, endOfMonth, formatTime, minToTime, rangeDays, startOfMonth, startOfWeek, timeToMin, today } from "@/lib/dates";
@@ -354,12 +355,15 @@ function ListView({ items }: { items: Occurrence[] }) {
   const { data: cats } = useCategories();
   const [cat, setCat] = useState("all");
   const [status, setStatus] = useState<"open" | "all" | "done">("open");
+  const [selecting, setSelecting] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(new Set());
   const filtered = items.filter(
     (o) => (cat === "all" || o.categoryId === cat) && (status === "all" || (status === "open" ? o.status !== "DONE" : o.status === "DONE")),
   );
   const byDate = new Map<string, Occurrence[]>();
   for (const o of filtered) byDate.set(o.date, [...(byDate.get(o.date) ?? []), o]);
   const t = today();
+  const toggle = (k: string) => setSel((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
@@ -380,13 +384,26 @@ function ListView({ items }: { items: Occurrence[] }) {
             { value: "all", label: "Toutes" },
           ]}
         />
+        <Button size="sm" variant={selecting ? "soft" : "secondary"} className="ml-auto" onClick={() => { setSelecting(!selecting); setSel(new Set()); }}>
+          {selecting ? "Terminer la sélection" : "Sélectionner plusieurs"}
+        </Button>
       </div>
+      {selecting && <BulkBar selected={filtered.filter((o) => sel.has(o.key))} all={filtered} onChange={setSel} />}
       {byDate.size === 0 && <Empty title="Aucune activité sur cette période" />}
       {[...byDate.entries()].map(([d, list]) => (
         <Card key={d} title={<span className="first-letter:uppercase">{d === t ? "Aujourd'hui" : fmtDateLong(d)}</span>}>
-          {list.map((o) => (
-            <ActivityItem key={o.key} o={o} />
-          ))}
+          {list.map((o) =>
+            selecting ? (
+              <div key={o.key} className="flex items-center gap-2">
+                <SelectBox checked={sel.has(o.key)} onChange={() => toggle(o.key)} />
+                <div className="min-w-0 flex-1">
+                  <ActivityItem o={o} />
+                </div>
+              </div>
+            ) : (
+              <ActivityItem key={o.key} o={o} />
+            ),
+          )}
         </Card>
       ))}
     </div>
@@ -395,6 +412,7 @@ function ListView({ items }: { items: Occurrence[] }) {
 
 function UrgentView({ items }: { items: Occurrence[] }) {
   const t = today();
+  const [sel, setSel] = useState<Set<string>>(new Set());
   const overdue = items.filter((o) => o.date < t && o.status !== "DONE" && o.status !== "POSTPONED" && !o.isRecurring);
   const urgent = items.filter(
     (o) => o.date >= t && o.status !== "DONE" && o.status !== "POSTPONED" && (o.priority >= 4 || (o.dueDate && o.dueDate <= addDays(t, 2))),
@@ -402,7 +420,19 @@ function UrgentView({ items }: { items: Occurrence[] }) {
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <Card title={<span className="flex items-center gap-2">En retard <Badge tone="warning">{overdue.length}</Badge></span>}>
-        {overdue.length === 0 ? <Empty title="Rien en retard 🎉" /> : overdue.map((o) => <ActivityItem key={o.key} o={o} showDate />)}
+        {overdue.length > 1 && <div className="mb-2"><BulkBar selected={overdue.filter((o) => sel.has(o.key))} all={overdue} onChange={setSel} /></div>}
+        {overdue.length === 0 ? (
+          <Empty title="Rien en retard 🎉" />
+        ) : (
+          overdue.map((o) => (
+            <div key={o.key} className="flex items-center gap-2">
+              {overdue.length > 1 && <SelectBox checked={sel.has(o.key)} onChange={() => setSel((s) => { const n = new Set(s); if (n.has(o.key)) n.delete(o.key); else n.add(o.key); return n; })} />}
+              <div className="min-w-0 flex-1">
+                <ActivityItem o={o} showDate />
+              </div>
+            </div>
+          ))
+        )}
         {overdue.length > 0 && <p className="mt-2 text-xs text-muted">Reporte-les en un clic, ou laisse « Organiser ma journée » les replacer.</p>}
       </Card>
       <Card title={<span className="flex items-center gap-2">Urgent / échéance proche <Badge tone="danger">{urgent.length}</Badge></span>}>

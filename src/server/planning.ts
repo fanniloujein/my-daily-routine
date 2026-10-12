@@ -7,20 +7,34 @@ import { getOccurrences, patchOccurrence } from "./occurrences";
 import { categoryForKind } from "./categories";
 import { GERMAN_OBJECTIVES } from "@/lib/constants";
 
-export async function buildPlan(user: User, date: DateStr, opts: { energy?: number; light?: boolean }): Promise<PlanResult> {
+export async function buildPlan(user: User, date: DateStr, opts: { energy?: number; light?: boolean; reshuffle?: boolean }): Promise<PlanResult> {
   const settings = readSettings(user.settings);
   const checkin = await prisma.energyCheckin.findUnique({ where: { userId_date: { userId: user.id, date } } });
   const energy = opts.energy ?? checkin?.energy ?? 3;
 
   const occ = await getOccurrences(user.id, date, date);
   const open = occ.filter((o) => o.status !== "DONE" && o.status !== "POSTPONED");
-  const fixed = open.filter((o) => o.startTime && o.endTime);
+  const now = date === today() ? nowTime() : null;
+  // Réorganiser : les tâches déjà placées mais non fixes redeviennent flexibles (rendez-vous fixes,
+  // séances, récurrences, sessions de modules et loisirs ne bougent jamais ; le passé non plus).
+  const movable = (o: (typeof open)[number]) =>
+    !!opts.reshuffle &&
+    !!o.startTime &&
+    !o.isFixed &&
+    !o.isRecurring &&
+    o.lessonRole !== "session" &&
+    !o.germanSessionId &&
+    !o.sportSessionId &&
+    !o.mediaItemId &&
+    !["rest", "leisure", "meds"].includes(o.category.kind ?? "") &&
+    (!now || o.startTime >= now);
+  const fixed = open.filter((o) => o.startTime && o.endTime && !movable(o));
 
   // Tâches flexibles : sans horaire aujourd'hui + tâches non datées en retard (jusqu'à 14 jours)
   const overdue = (await getOccurrences(user.id, addDays(date, -14), addDays(date, -1))).filter(
     (o) => !o.startTime && o.status !== "DONE" && o.status !== "POSTPONED" && !o.isRecurring,
   );
-  const flexible = [...open.filter((o) => !o.startTime), ...overdue];
+  const flexible = [...open.filter((o) => !o.startTime || movable(o)), ...overdue];
 
   // Objectifs de la semaine
   const ws = startOfWeek(date);
@@ -38,7 +52,7 @@ export async function buildPlan(user: User, date: DateStr, opts: { energy?: numb
     energy,
     light: opts.light,
     settings,
-    notBefore: date === today() ? nowTime() : undefined,
+    notBefore: now ?? undefined,
     fixed: fixed.map((o) => ({ id: o.id, title: o.title, startTime: o.startTime, endTime: o.endTime, categoryKind: o.category.kind })),
     tasks: flexible.map((o) => ({
       id: o.id,
@@ -67,6 +81,7 @@ export async function applyPlan(
   date: DateStr,
   blocks: PlanBlock[],
   postponed: { id: string; occurrenceDate: DateStr }[],
+  unplaced: string[] = [],
 ) {
   let updated = 0;
   let created = 0;
@@ -164,6 +179,13 @@ export async function applyPlan(
       });
       created++;
     }
+  }
+
+  // Tâches réorganisées sans nouveau créneau : on libère leur ancien horaire (aucun chevauchement)
+  const placedIds = new Set(blocks.filter((b) => b.kind === "task").map((b) => b.refId));
+  for (const id of unplaced) {
+    if (placedIds.has(id)) continue;
+    await prisma.activity.updateMany({ where: { id, userId: user.id, isFixed: false, recurrence: "NONE" }, data: { startTime: null, endTime: null } });
   }
 
   let moved = 0;
