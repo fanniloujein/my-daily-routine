@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const token = useApi<{ token: string | null }>("/api/ics/token");
   const demo = useApi<{ hasDemo: boolean }>("/api/demo");
   const [origin, setOrigin] = useState("");
+  const [wipe, setWipe] = useState("");
 
   useEffect(() => {
     if (me) {
@@ -206,6 +207,33 @@ export default function SettingsPage() {
               <Button size="sm" variant="secondary" onClick={() => fileRef.current?.click()}>
                 <Upload className="h-4 w-4" /> Restaurer une sauvegarde
               </Button>
+            </div>
+            <div className="space-y-2 rounded-2xl border border-danger/30 bg-danger-soft/30 p-3">
+              <p className="font-medium text-ink">Tout vider pour tout remplir moi-même</p>
+              <p className="text-xs text-ink-2">
+                Supprime tout le contenu : activités, élèves, séances, projets, allemand, médicaments, sport, loisirs, énergie et bilans. Ton compte, tes catégories et tes réglages sont conservés.
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input className="input h-9 w-40" placeholder="Tape VIDER" value={wipe} onChange={(e) => setWipe(e.target.value)} aria-label="Confirmation" />
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={wipe.trim().toUpperCase() !== "VIDER"}
+                  onClick={async () => {
+                    if (!(await confirm({ title: "Tout vider ?", message: "Tout le contenu sera supprimé définitivement. Pense à exporter une sauvegarde avant si besoin.", danger: true, confirmLabel: "Tout vider" }))) return;
+                    try {
+                      await api("/api/reset", { body: { confirm: wipe } });
+                      setWipe("");
+                      await refreshAll();
+                      toast("Application vidée : à toi de jouer ✨");
+                    } catch (e) {
+                      toast(e instanceof Error ? e.message : "Erreur", "danger");
+                    }
+                  }}
+                >
+                  Tout vider
+                </Button>
+              </div>
             </div>
             <div className="space-y-2 border-t border-line/60 pt-3">
               <p className="font-medium text-ink">Repartir de zéro dans le planning</p>

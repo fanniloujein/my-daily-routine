@@ -11,7 +11,7 @@ export default function SetupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [demo, setDemo] = useState(true);
+  const [demo, setDemo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [blocked, setBlocked] = useState(false);
@@ -54,7 +54,7 @@ export default function SetupPage() {
           <Field label="Mot de passe" hint="10 caractères minimum">
             <input className="input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
           </Field>
-          <Toggle checked={demo} onChange={setDemo} label="Ajouter des données de démonstration" description="Élèves, projets, sessions… supprimables en un clic dans les paramètres." />
+          <Toggle checked={demo} onChange={setDemo} label="Ajouter des données de démonstration" description="Pour découvrir l'application avec des exemples. Laisse décoché pour commencer avec une application vide." />
           <Button className="w-full" size="lg" loading={loading}>
             Créer mon espace
           </Button>
