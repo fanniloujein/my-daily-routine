@@ -1,0 +1,46 @@
+{
+  "name": "my-life-os",
+  "version": "1.0.0",
+  "private": true,
+  "description": "My Life OS — assistant personnel pour organiser travail, apprentissage, santé et loisirs.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
+    "date-fns": "^4.4.0",
+    "jose": "^5.10.0",
+    "lucide-react": "^1.55.0",
+    "next": "^15.5.27",
+    "react": "^19.1.9",
+    "react-dom": "^19.1.9",
+    "swr": "^2.5.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.6.1",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.27",
+    "postcss": "^8.5.29",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

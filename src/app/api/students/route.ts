@@ -1,0 +1,23 @@
+import { prisma } from "@/lib/db";
+import { body, route } from "@/lib/api";
+import { studentSchema } from "@/lib/validation";
+import { today } from "@/lib/dates";
+
+export const GET = route(async ({ user }) => {
+  const t = today();
+  const students = await prisma.student.findMany({
+    where: { userId: user.id },
+    orderBy: [{ archived: "asc" }, { name: "asc" }],
+    include: { lessons: { select: { id: true, date: true, startTime: true, status: true, subject: true } } },
+  });
+  return students.map(({ lessons, ...s }) => ({
+    ...s,
+    lessonsDone: lessons.filter((l) => l.status === "DONE").length,
+    nextLesson: lessons.filter((l) => l.status === "PLANNED" && l.date >= t).sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime))[0] ?? null,
+  }));
+});
+
+export const POST = route(async ({ req, user }) => {
+  const d = await body(req, studentSchema);
+  return prisma.student.create({ data: { ...d, userId: user.id } });
+});

@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette : bleu pastel, bleu nuit, blanc cassé, lavande ; vert doux (terminé), orange discret (rappels) */
+:root {
+  --bg: 247 246 242;
+  --surface: 255 255 255;
+  --surface-2: 243 242 250;
+  --ink: 27 37 64;
+  --ink-2: 71 82 112;
+  --muted: 112 120 145;
+  --line: 228 227 238;
+  --primary: 91 141 239;
+  --primary-strong: 52 96 190;
+  --primary-soft: 222 233 252;
+  --navy: 30 42 74;
+  --lavender: 155 135 245;
+  --lavender-soft: 237 233 252;
+  --success: 64 160 118;
+  --success-soft: 223 243 233;
+  --warning: 214 134 58;
+  --warning-soft: 252 239 224;
+  --danger: 205 87 94;
+  --danger-soft: 251 230 231;
+  --shadow: 30 42 74;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 14 19 34;
+  --surface: 22 29 49;
+  --surface-2: 29 36 62;
+  --ink: 232 236 246;
+  --ink-2: 184 192 216;
+  --muted: 140 149 178;
+  --line: 44 52 82;
+  --primary: 122 167 240;
+  --primary-strong: 160 194 248;
+  --primary-soft: 32 46 80;
+  --navy: 200 214 245;
+  --lavender: 178 163 248;
+  --lavender-soft: 42 37 75;
+  --success: 108 199 157;
+  --success-soft: 24 51 42;
+  --warning: 240 173 102;
+  --warning-soft: 58 42 23;
+  --danger: 239 128 134;
+  --danger-soft: 62 28 32;
+  --shadow: 0 0 0;
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+@layer base {
+  /* Les éléments de grille peuvent rétrécir (évite le débordement horizontal sur mobile) */
+  .grid > * {
+    min-width: 0;
+  }
+}
+
+@layer components {
+  .card {
+    @apply min-w-0 rounded-2xl border border-line/70 bg-surface shadow-card;
+  }
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted/80 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/25 disabled:opacity-60;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium text-ink-2;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium;
+  }
+  .section-title {
+    @apply text-sm font-semibold text-ink;
+  }
+}
+
+/* Barre de défilement discrète */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line)) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
