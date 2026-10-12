@@ -115,8 +115,8 @@ docker run -d --name mylifeos-db -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=my
 
 1. **New → PostgreSQL** : crée la base, puis copie son **Internal Database URL**.
 2. **New → Web Service** : connecte le dépôt GitHub, branche à déployer, *Runtime* Node.
-3. *Build Command* : `npm install && npx prisma migrate deploy && npm run build`
-4. *Start Command* : `npm start`
+3. *Build Command* : `npm install && npm run build`
+4. *Start Command* : `npm start` (crée/met à jour les tables automatiquement au démarrage)
 5. Onglet **Environment** : `DATABASE_URL` (Internal Database URL), `AUTH_SECRET` (Generate), `DATA_ENCRYPTION_KEY` (Generate), `APP_TIMEZONE=Europe/Paris`, `NODE_VERSION=22`, et facultativement `ANTHROPIC_API_KEY`.
 6. Déploie, puis ouvre `https://<ton-service>.onrender.com/setup`.
 
