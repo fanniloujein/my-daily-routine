@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CLIENT
+  ADMIN
+}
+
+enum RequestStatus {
+  RECEIVED
+  IN_REVIEW
+  INFO_NEEDED
+  QUOTE_SENT
+  QUOTE_ACCEPTED
+  IN_PROGRESS
+  AWAITING_VALIDATION
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestKind {
+  QUOTE
+  CALL
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum FileKind {
+  CLIENT_ATTACHMENT
+  DELIVERABLE
+  PORTFOLIO_IMAGE
+}
+
+enum AuthorRole {
+  CLIENT
+  TEAM
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         Role      @default(CLIENT)
+  locale       String    @default("fr")
+  // Incrémenté à chaque changement de mot de passe : invalide les sessions existantes.
+  tokenVersion Int       @default(0)
+  createdAt    DateTime  @default(now())
+  requests     ProjectRequest[]
+  notes        InternalNote[]
+}
+
+model ProjectRequest {
+  id              String        @id @default(cuid())
+  reference       String        @unique
+  // Hash SHA-256 du jeton de suivi remis au client (le jeton lui-même n'est jamais stocké).
+  accessTokenHash String
+  // Même jeton chiffré (AES-GCM) pour pouvoir le remettre dans les e-mails suivants.
+  accessTokenEnc  String?
+  kind            RequestKind   @default(QUOTE)
+  status          RequestStatus @default(RECEIVED)
+  services        String[]
+  // Réponses du configurateur : { [serviceSlug]: { [questionId]: valeur } } + { project: {...} }
+  answers         Json
+  // Instantané des libellés au moment de l'envoi (lisible même si la configuration change).
+  snapshot        Json
+  estimateMin     Int?
+  estimateMax     Int?
+  currency        String        @default("EUR")
+  name            String
+  email           String
+  phone           String?
+  company         String?
+  country         String
+  contactPref     String
+  comments        String?
+  locale          String        @default("fr")
+  ipHash          String?
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  files           StoredFile[]
+  notes           InternalNote[]
+  events          StatusEvent[]
+  quotes          Quote[]
+  messages        Message[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
+}
+
+model StoredFile {
+  id           String          @id @default(cuid())
+  kind         FileKind
+  originalName String
+  mime         String
+  size         Int
+  data         Bytes
+  requestId    String?
+  request      ProjectRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  messageId    String?
+  message      Message?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+
+  @@index([requestId])
+}
+
+model InternalNote {
+  id        String         @id @default(cuid())
+  requestId String
+  request   ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime       @default(now())
+}
+
+model StatusEvent {
+  id        String         @id @default(cuid())
+  requestId String
+  request   ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  from      RequestStatus?
+  to        RequestStatus
+  note      String?
+  createdAt DateTime       @default(now())
+}
+
+model Quote {
+  id          String         @id @default(cuid())
+  requestId   String
+  request     ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  // [{ label, quantity, unitPrice }] — montants en centimes
+  items       Json
+  total       Int
+  currency    String         @default("EUR")
+  message     String?
+  validUntil  DateTime?
+  status      QuoteStatus    @default(DRAFT)
+  clientNote  String?
+  sentAt      DateTime?
+  respondedAt DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model Message {
+  id         String         @id @default(cuid())
+  requestId  String
+  request    ProjectRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorRole AuthorRole
+  body       String
+  files      StoredFile[]
+  createdAt  DateTime       @default(now())
+}
+
+model Service {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  icon        String
+  active      Boolean @default(true)
+  order       Int     @default(0)
+  // Libellés traduits : { fr, en, ar }
+  name        Json
+  description Json
+  // Prix de base (unités monétaires entières). null = pas de tarif → « Devis personnalisé ».
+  baseMin     Int?
+  baseMax     Int?
+  // Questions/filtres du configurateur (voir src/lib/services/types.ts)
+  questions   Json
+  updatedAt   DateTime @updatedAt
+}
+
+model PortfolioProject {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  category   String
+  title      Json
+  summary    Json
+  body       Json
+  services   String[]
+  // Résultats vérifiables uniquement (facultatif)
+  results    Json?
+  client     String?
+  year       Int?
+  imageIds   String[]
+  published  Boolean  @default(false)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model FaqItem {
+  id        String  @id @default(cuid())
+  question  Json
+  answer    Json
+  order     Int     @default(0)
+  published Boolean @default(true)
+}
+
+// Paires clé/valeur : textes de la page d'accueil, réglages tarifaires, informations légales…
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Compteur anti-abus (soumissions, connexions) partagé entre instances.
+model RateLimitHit {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

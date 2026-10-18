@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-poppins: "Poppins";
+  --font-arabic: "Cairo";
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+  }
+  html[dir="rtl"] body {
+    @apply font-arabic;
+  }
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight text-ink;
+    text-wrap: balance;
+  }
+  html[dir="rtl"] h1, html[dir="rtl"] h2, html[dir="rtl"] h3 {
+    @apply tracking-normal;
+  }
+  p { text-wrap: pretty; }
+  :focus-visible {
+    @apply outline-none ring-2 ring-cyan ring-offset-2 ring-offset-paper;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container-x { @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.22em] text-cyan-deep; }
+  html[dir="rtl"] .eyebrow { @apply tracking-normal; }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition
+      duration-150 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98];
+  }
+  .btn-primary { @apply btn bg-gold text-midnight shadow-[0_8px_24px_-10px_rgb(255_184_0/0.8)] hover:bg-gold-sun; }
+  .btn-dark { @apply btn bg-midnight text-white hover:bg-midnight-700; }
+  .btn-ghost { @apply btn border border-line bg-white text-ink hover:border-ink/30 hover:bg-paper-2; }
+  .btn-ghost-dark { @apply btn border border-white/20 text-white hover:bg-white/10; }
+  .btn-danger { @apply btn bg-danger text-white hover:bg-danger/90; }
+  .btn-sm { @apply px-3.5 py-2 text-xs; }
+
+  .card { @apply rounded-2xl border border-line bg-white shadow-card; }
+
+  .field-label { @apply mb-1.5 block text-sm font-medium text-ink; }
+  .field-help { @apply mt-1 text-xs text-ink-muted; }
+  .field-error { @apply mt-1.5 text-xs font-medium text-danger; }
+  .input {
+    @apply block w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-muted/70
+      transition focus:border-cyan focus:outline-none focus:ring-4 focus:ring-cyan/15 aria-[invalid=true]:border-danger;
+  }
+  textarea.input { @apply min-h-[110px] resize-y; }
+
+  .chip {
+    @apply inline-flex cursor-pointer select-none items-center gap-2 rounded-full border border-line bg-white px-3.5 py-2 text-sm
+      text-ink-2 transition hover:border-ink/30;
+  }
+  .chip-on { @apply border-midnight bg-midnight text-white hover:border-midnight; }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+
+  .pixel-grid {
+    background-image: radial-gradient(rgb(255 255 255 / 0.09) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+}
