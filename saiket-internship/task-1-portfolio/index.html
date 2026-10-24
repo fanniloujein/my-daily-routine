@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="fr" data-theme="day" class="no-js">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loujein Fanni — Portfolio Full Stack</title>
+  <meta name="description" content="Portfolio de Loujein Fanni, stagiaire en développement Full Stack. Un site dont le thème suit le rythme de la journée." />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%230d9488'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' font-family='Arial' font-weight='700' font-size='26' fill='white' text-anchor='middle'%3ELF%3C/text%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <!-- Apply the saved / time-based theme before first paint (no flash) -->
+  <script>
+    (function () {
+      var d = document.documentElement;
+      d.classList.remove("no-js");
+      var saved = null;
+      try { saved = localStorage.getItem("lf-theme"); } catch (e) {}
+      var h = new Date().getHours();
+      var auto = h >= 5 && h < 9 ? "dawn" : h >= 9 && h < 17 ? "day" : h >= 17 && h < 20 ? "dusk" : "night";
+      d.setAttribute("data-theme", saved && saved !== "auto" ? saved : auto);
+    })();
+  </script>
+</head>
+
+<body>
+  <!-- SVG icon sprite -->
+  <svg width="0" height="0" class="absolute" aria-hidden="true">
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-17.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-sunrise" viewBox="0 0 24 24"><path d="M12 2v8m-7.07.93 1.41 1.41M2 18h2m16 0h2m-2.93-7.07-1.41 1.41M22 22H2M8 6l4-4 4 4m0 12a4 4 0 0 0-8 0"/></symbol>
+    <symbol id="i-sunset" viewBox="0 0 24 24"><path d="M12 10V2m-7.07 8.93 1.41 1.41M2 18h2m16 0h2m-2.93-7.07-1.41 1.41M22 22H2M16 6l-4 4-4-4m8 12a4 4 0 0 0-8 0"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65S8.93 17.38 9 18v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-linkedin" viewBox="0 0 24 24"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65m20-5-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18m-5 4a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="i-todo" viewBox="0 0 24 24"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="m3 17 2 2 4-4m4-13h8m-8 6h8m-8 6h8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87m-3-12a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="6.5" cy="12.5" r="1"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2Z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    <symbol id="i-spinner" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.22-8.56"/></symbol>
+  </svg>
+
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2" data-i18n="skip">Aller au contenu</a>
+
+  <!-- Scroll progress -->
+  <div id="progress" class="fixed inset-x-0 top-0 z-[55] h-1 origin-left scale-x-0 bg-gradient-to-r from-accent to-accent2" aria-hidden="true"></div>
+
+  <!-- ============================== HEADER ============================== -->
+  <header id="header" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
+    <nav class="container-page flex h-16 items-center justify-between gap-4" aria-label="Navigation principale">
+      <a href="#home" class="group flex items-center gap-2.5 font-display text-lg font-bold">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-accent to-accent2 text-sm text-white shadow transition group-hover:rotate-6">LF</span>
+        <span>Loujein<span class="text-accent">.</span></span>
+      </a>
+
+      <ul id="nav-links" class="hidden items-center gap-1 md:flex">
+        <li><a class="nav-link" href="#about" data-i18n="nav.about">À propos</a></li>
+        <li><a class="nav-link" href="#projects" data-i18n="nav.projects">Projets</a></li>
+        <li><a class="nav-link" href="#journey" data-i18n="nav.journey">Parcours</a></li>
+        <li><a class="nav-link" href="#contact" data-i18n="nav.contact">Contact</a></li>
+      </ul>
+
+      <div class="flex items-center gap-2">
+        <!-- Theme picker -->
+        <div class="hidden items-center gap-0.5 rounded-xl border border-line bg-surface/80 p-1 backdrop-blur sm:flex" role="group" aria-label="Thème" data-i18n-aria="theme.label">
+          <button class="theme-btn" data-theme-choice="auto" title="Auto" data-i18n-title="theme.auto"><svg class="icon h-4 w-4"><use href="#i-clock"/></svg><span class="sr-only" data-i18n="theme.auto">Auto (selon l'heure)</span></button>
+          <button class="theme-btn" data-theme-choice="dawn" title="Aube" data-i18n-title="theme.dawn"><svg class="icon h-4 w-4"><use href="#i-sunrise"/></svg><span class="sr-only" data-i18n="theme.dawn">Aube</span></button>
+          <button class="theme-btn" data-theme-choice="day" title="Jour" data-i18n-title="theme.day"><svg class="icon h-4 w-4"><use href="#i-sun"/></svg><span class="sr-only" data-i18n="theme.day">Jour</span></button>
+          <button class="theme-btn" data-theme-choice="dusk" title="Crépuscule" data-i18n-title="theme.dusk"><svg class="icon h-4 w-4"><use href="#i-sunset"/></svg><span class="sr-only" data-i18n="theme.dusk">Crépuscule</span></button>
+          <button class="theme-btn" data-theme-choice="night" title="Nuit" data-i18n-title="theme.night"><svg class="icon h-4 w-4"><use href="#i-moon"/></svg><span class="sr-only" data-i18n="theme.night">Nuit</span></button>
+        </div>
+        <!-- Compact theme cycler (mobile) -->
+        <button id="theme-cycle" class="grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface/80 backdrop-blur sm:hidden" aria-label="Changer de thème" data-i18n-aria="theme.cycle">
+          <svg class="icon"><use href="#i-palette"/></svg>
+        </button>
+
+        <button id="lang-toggle" class="h-10 rounded-xl border border-line bg-surface/80 px-3 font-mono text-xs font-semibold backdrop-blur transition hover:border-accent/50" aria-label="Switch to English">EN</button>
+
+        <button id="menu-toggle" class="grid h-10 w-10 place-items-center rounded-xl border border-line bg-surface/80 backdrop-blur md:hidden" aria-expanded="false" aria-controls="mobile-menu" aria-label="Ouvrir le menu" data-i18n-aria="nav.open">
+          <svg class="icon"><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="hidden border-t border-line bg-surface/95 backdrop-blur md:hidden">
+      <ul class="container-page flex flex-col py-3">
+        <li><a class="block rounded-lg px-3 py-3 font-medium hover:bg-bg" href="#about" data-i18n="nav.about">À propos</a></li>
+        <li><a class="block rounded-lg px-3 py-3 font-medium hover:bg-bg" href="#projects" data-i18n="nav.projects">Projets</a></li>
+        <li><a class="block rounded-lg px-3 py-3 font-medium hover:bg-bg" href="#journey" data-i18n="nav.journey">Parcours</a></li>
+        <li><a class="block rounded-lg px-3 py-3 font-medium hover:bg-bg" href="#contact" data-i18n="nav.contact">Contact</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================== HERO / HOME ============================== -->
+    <section id="home" class="sky relative overflow-hidden pb-24 pt-36 sm:pb-32 sm:pt-44">
+      <div class="stars pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <div id="orb" class="orb pointer-events-none" aria-hidden="true"></div>
+
+      <div class="container-page relative grid items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div class="reveal">
+          <p class="eyebrow"><span class="relative flex h-2 w-2"><span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-75"></span><span class="relative inline-flex h-2 w-2 rounded-full bg-ok"></span></span><span data-i18n="hero.badge">Disponible pour un stage</span></p>
+          <h1 class="mt-6 font-display text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl">
+            <span data-i18n="hero.hello">Bonjour, je suis</span><br />
+            <span class="gradient-text">Loujein Fanni</span>
+          </h1>
+          <p class="mt-5 min-h-[2rem] font-mono text-lg text-muted sm:text-xl">
+            &gt; <span id="typed" class="caret text-ink">Développement Full Stack</span>
+          </p>
+          <p class="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg" data-i18n="hero.intro">
+            Je conçois des applications web utiles et soignées, de l'interface jusqu'à la base de données. Ce site change de couleurs au fil de votre journée : regardez le ciel.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href="#projects" class="btn-primary"><span data-i18n="hero.cta1">Voir mes projets</span><svg class="icon h-4 w-4"><use href="#i-arrow"/></svg></a>
+            <a href="#contact" class="btn-ghost"><svg class="icon h-4 w-4"><use href="#i-mail"/></svg><span data-i18n="hero.cta2">Me contacter</span></a>
+          </div>
+          <div class="mt-8 flex items-center gap-4 text-muted">
+            <a href="https://github.com/fanniloujein" target="_blank" rel="noopener" class="transition hover:text-accent" aria-label="GitHub"><svg class="icon h-6 w-6"><use href="#i-github"/></svg></a>
+            <!-- TODO: remplacer par le lien de votre profil LinkedIn -->
+            <a href="https://www.linkedin.com/" target="_blank" rel="noopener" class="transition hover:text-accent" aria-label="LinkedIn"><svg class="icon h-6 w-6"><use href="#i-linkedin"/></svg></a>
+            <a href="#contact" class="transition hover:text-accent" aria-label="E-mail"><svg class="icon h-6 w-6"><use href="#i-mail"/></svg></a>
+          </div>
+        </div>
+
+        <!-- Live "code window" card -->
+        <div class="reveal" style="transition-delay:.15s">
+          <div class="card overflow-hidden bg-surface/85 backdrop-blur">
+            <div class="flex items-center gap-2 border-b border-line px-4 py-3">
+              <span class="h-3 w-3 rounded-full bg-[#ff5f57]"></span>
+              <span class="h-3 w-3 rounded-full bg-[#febc2e]"></span>
+              <span class="h-3 w-3 rounded-full bg-[#28c840]"></span>
+              <span class="ml-3 font-mono text-xs text-muted">loujein.js</span>
+            </div>
+            <pre class="overflow-x-auto p-5 font-mono text-[13px] leading-7 sm:text-sm"><code><span class="text-accent2">const</span> <span class="text-accent">loujein</span> = {
+  role: <span class="text-ok">"Full Stack Intern"</span>,
+  stack: [<span class="text-ok">"HTML"</span>, <span class="text-ok">"CSS"</span>, <span class="text-ok">"JS"</span>,
+          <span class="text-ok">"React"</span>, <span class="text-ok">"Node"</span>, <span class="text-ok">"SQL"</span>],
+  localTime: <span class="text-ok">"<span id="live-time">--:--</span>"</span>,
+  theme: <span class="text-ok">"<span id="live-theme">day</span>"</span>,
+  coffee: <span class="text-accent2">true</span>,
+};
+
+<span class="text-muted">// <span data-i18n="hero.comment">le thème suit l'heure réelle</span> ☕</span></code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hills -->
+      <svg class="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full sm:h-32" viewBox="0 0 1440 160" preserveAspectRatio="none" aria-hidden="true">
+        <path class="hill-back" d="M0 90 C 240 30 420 40 620 80 S 1000 140 1200 70 S 1440 60 1440 60 V160 H0Z"/>
+        <path class="hill" d="M0 120 C 260 70 480 90 720 115 S 1180 150 1440 100 V160 H0Z"/>
+      </svg>
+    </section>
+
+    <!-- ============================== ABOUT ============================== -->
+    <section id="about" class="section">
+      <div class="container-page grid gap-12 lg:grid-cols-2 lg:items-center">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="about.eyebrow">À propos</span>
+          <h2 class="title" data-i18n="about.title">Du pixel à la base de données</h2>
+          <p class="mt-5 leading-relaxed text-muted" data-i18n="about.p1">
+            Je développe des outils qui simplifient le quotidien. Mon projet personnel, My Life OS, organise toute une vie (planning, projets, apprentissage, santé) et m'a appris à penser une application de bout en bout.
+          </p>
+          <p class="mt-4 leading-relaxed text-muted" data-i18n="about.p2">
+            Pendant ce stage chez SaiKet Systems, je construis pas à pas une stack complète : interfaces responsives, React, API REST avec Node.js et Express, puis SQL.
+          </p>
+          <dl class="mt-8 grid grid-cols-3 gap-4">
+            <div class="card p-4 text-center"><dt class="text-xs text-muted" data-i18n="about.stat1">Tâches du stage</dt><dd class="font-display text-3xl font-bold text-accent" data-count="6">0</dd></div>
+            <div class="card p-4 text-center"><dt class="text-xs text-muted" data-i18n="about.stat2">Thèmes du jour</dt><dd class="font-display text-3xl font-bold text-accent" data-count="4">0</dd></div>
+            <div class="card p-4 text-center"><dt class="text-xs text-muted" data-i18n="about.stat3">Langues du site</dt><dd class="font-display text-3xl font-bold text-accent" data-count="2">0</dd></div>
+          </dl>
+        </div>
+
+        <div class="reveal grid gap-4 sm:grid-cols-2" style="transition-delay:.1s">
+          <article class="card p-6">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 text-accent"><svg class="icon"><use href="#i-code"/></svg></span>
+            <h3 class="mt-4 font-display text-lg font-bold">Front-end</h3>
+            <div class="mt-3 flex flex-wrap gap-2"><span class="chip">HTML5</span><span class="chip">CSS3</span><span class="chip">JavaScript</span><span class="chip">Tailwind</span><span class="chip">React</span></div>
+          </article>
+          <article class="card p-6">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-accent2/10 text-accent2"><svg class="icon"><use href="#i-server"/></svg></span>
+            <h3 class="mt-4 font-display text-lg font-bold">Back-end</h3>
+            <div class="mt-3 flex flex-wrap gap-2"><span class="chip">Node.js</span><span class="chip">Express</span><span class="chip">REST</span><span class="chip">Next.js</span></div>
+          </article>
+          <article class="card p-6">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-accent2/10 text-accent2"><svg class="icon"><use href="#i-database"/></svg></span>
+            <h3 class="mt-4 font-display text-lg font-bold" data-i18n="about.data">Données</h3>
+            <div class="mt-3 flex flex-wrap gap-2"><span class="chip">SQL</span><span class="chip">PostgreSQL</span><span class="chip">Prisma</span></div>
+          </article>
+          <article class="card p-6">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-accent/10 text-accent"><svg class="icon"><use href="#i-layers"/></svg></span>
+            <h3 class="mt-4 font-display text-lg font-bold" data-i18n="about.tools">Outils</h3>
+            <div class="mt-3 flex flex-wrap gap-2"><span class="chip">Git</span><span class="chip">GitHub</span><span class="chip">Postman</span><span class="chip">VS Code</span></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== PROJECTS ============================== -->
+    <section id="projects" class="section border-y border-line bg-surface/50">
+      <div class="container-page">
+        <div class="reveal flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div>
+            <span class="eyebrow" data-i18n="projects.eyebrow">Projets</span>
+            <h2 class="title" data-i18n="projects.title">Ce que je construis</h2>
+            <p class="mt-3 max-w-xl text-muted" data-i18n="projects.sub">Les cartes en pointillés sont des emplacements réservés : elles se rempliront au fil des tâches du stage.</p>
+          </div>
+          <div class="flex flex-wrap gap-2" role="group" aria-label="Filtrer les projets" data-i18n-aria="projects.filter">
+            <button class="filter-btn" data-filter="all" aria-pressed="true" data-i18n="projects.all">Tous</button>
+            <button class="filter-btn" data-filter="front" aria-pressed="false">Front-end</button>
+            <button class="filter-btn" data-filter="back" aria-pressed="false">Back-end</button>
+            <button class="filter-btn" data-filter="full" aria-pressed="false">Full Stack</button>
+          </div>
+        </div>
+
+        <p id="project-count" class="mt-6 text-sm text-muted" aria-live="polite"></p>
+
+        <div id="project-grid" class="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <!-- Featured: real project -->
+          <article class="project card reveal flex flex-col sm:col-span-2" data-category="full">
+            <div class="project-cover !h-48"><svg class="icon"><use href="#i-calendar"/></svg>
+              <span class="badge absolute left-4 top-4 bg-white/90 text-[#0f172a]">★ <span data-i18n="projects.featured">Projet phare</span></span>
+            </div>
+            <div class="flex flex-1 flex-col p-6">
+              <h3 class="font-display text-xl font-bold">My Life OS</h3>
+              <p class="mt-2 flex-1 text-sm leading-relaxed text-muted" data-i18n="projects.p0">Assistant personnel : planning intelligent adapté à l'énergie du jour, cours particuliers, projets freelance en Kanban, rappels et statistiques.</p>
+              <div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="chip">Next.js</span><span class="chip">TypeScript</span><span class="chip">Prisma</span><span class="chip">PostgreSQL</span></div>
+              <div class="mt-5 flex items-center justify-between">
+                <span class="badge bg-ok/15 text-ok"><svg class="icon h-3.5 w-3.5"><use href="#i-check"/></svg><span data-i18n="status.done">Terminé</span></span>
+                <a href="https://github.com/fanniloujein/my-daily-routine" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-sm font-semibold text-accent hover:underline"><span data-i18n="projects.code">Code</span><svg class="icon h-4 w-4"><use href="#i-external"/></svg></a>
+              </div>
+            </div>
+          </article>
+
+          <!-- Task 1 (this site) -->
+          <article class="project card reveal flex flex-col" data-category="front">
+            <div class="project-cover"><svg class="icon"><use href="#i-palette"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 01</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t1">Portfolio « Rythme du jour »</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p1">Ce site : 4 thèmes liés à l'heure, bilingue, formulaire validé en JavaScript.</p>
+              <div class="mt-5"><span class="badge bg-ok/15 text-ok"><svg class="icon h-3.5 w-3.5"><use href="#i-check"/></svg><span data-i18n="status.done">Terminé</span></span></div>
+            </div>
+          </article>
+
+          <!-- Placeholders for next tasks -->
+          <article class="project card reveal flex flex-col border-dashed" data-category="front">
+            <div class="project-cover is-soon"><svg class="icon"><use href="#i-bag"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 02</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t2">Landing page e-commerce</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p2">Page responsive avec interactions en JavaScript natif.</p>
+              <div class="mt-5"><span class="badge bg-accent/10 text-accent" data-i18n="status.soon">Bientôt</span></div>
+            </div>
+          </article>
+
+          <article class="project card reveal flex flex-col border-dashed" data-category="front">
+            <div class="project-cover is-soon"><svg class="icon"><use href="#i-todo"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 03</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t3">To-do list en React</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p3">Ajouter, modifier et supprimer des tâches : composants, état et props.</p>
+              <div class="mt-5"><span class="badge bg-accent/10 text-accent" data-i18n="status.soon">Bientôt</span></div>
+            </div>
+          </article>
+
+          <article class="project card reveal flex flex-col border-dashed" data-category="back">
+            <div class="project-cover is-soon"><svg class="icon"><use href="#i-server"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 04</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t4">API REST « Users »</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p4">CRUD avec Node.js et Express, testé avec Postman.</p>
+              <div class="mt-5"><span class="badge bg-accent/10 text-accent" data-i18n="status.soon">Bientôt</span></div>
+            </div>
+          </article>
+
+          <article class="project card reveal flex flex-col border-dashed" data-category="back">
+            <div class="project-cover is-soon"><svg class="icon"><use href="#i-database"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 05</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t5">Intégration SQL</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p5">L'API branchée sur PostgreSQL ou MySQL.</p>
+              <div class="mt-5"><span class="badge bg-accent/10 text-accent" data-i18n="status.soon">Bientôt</span></div>
+            </div>
+          </article>
+
+          <article class="project card reveal flex flex-col border-dashed" data-category="full">
+            <div class="project-cover is-soon"><svg class="icon"><use href="#i-users"/></svg></div>
+            <div class="flex flex-1 flex-col p-6">
+              <p class="font-mono text-xs text-accent">SaiKet · Task 06</p>
+              <h3 class="mt-1 font-display text-lg font-bold" data-i18n="projects.t6">User Management System</h3>
+              <p class="mt-2 flex-1 text-sm text-muted" data-i18n="projects.p6">Front-end, back-end et base de données réunis, avec connexion.</p>
+              <div class="mt-5"><span class="badge bg-accent/10 text-accent" data-i18n="status.soon">Bientôt</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== JOURNEY ============================== -->
+    <section id="journey" class="section">
+      <div class="container-page grid gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+        <div class="reveal lg:sticky lg:top-28 lg:self-start">
+          <span class="eyebrow" data-i18n="journey.eyebrow">Parcours</span>
+          <h2 class="title" data-i18n="journey.title">Un mois, six étapes</h2>
+          <p class="mt-4 text-muted" data-i18n="journey.sub">Stage Full Stack chez SaiKet Systems, du 24 octobre au 24 novembre 2026.</p>
+          <div class="mt-6">
+            <div class="flex justify-between text-sm font-semibold"><span data-i18n="journey.progress">Progression</span><span id="journey-pct">0%</span></div>
+            <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="17" aria-labelledby="journey-pct">
+              <div id="journey-bar" class="h-full w-0 rounded-full bg-gradient-to-r from-accent to-accent2 transition-all duration-1000" data-target="17"></div>
+            </div>
+          </div>
+        </div>
+
+        <ol class="timeline space-y-6">
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full bg-ok text-white shadow"><svg class="icon h-5 w-5"><use href="#i-check"/></svg></span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">01 · HTML · CSS · Tailwind · JS</p><h3 class="mt-1 font-semibold" data-i18n="journey.s1">Portfolio statique avec thème</h3></div>
+          </li>
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full border-2 border-accent bg-surface font-mono text-sm font-bold text-accent">02</span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">HTML · CSS · JS</p><h3 class="mt-1 font-semibold" data-i18n="journey.s2">Page web responsive (e-commerce)</h3></div>
+          </li>
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full border-2 border-line bg-surface font-mono text-sm font-bold text-muted">03</span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">React</p><h3 class="mt-1 font-semibold" data-i18n="journey.s3">Bases d'un framework front-end</h3></div>
+          </li>
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full border-2 border-line bg-surface font-mono text-sm font-bold text-muted">04</span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">Node.js · Express · Postman</p><h3 class="mt-1 font-semibold" data-i18n="journey.s4">API REST de base</h3></div>
+          </li>
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full border-2 border-line bg-surface font-mono text-sm font-bold text-muted">05</span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">SQL · PostgreSQL</p><h3 class="mt-1 font-semibold" data-i18n="journey.s5">Intégration d'une base de données</h3></div>
+          </li>
+          <li class="reveal relative pl-14">
+            <span class="absolute left-0 top-0 grid h-10 w-10 place-items-center rounded-full border-2 border-line bg-surface font-mono text-sm font-bold text-muted">06</span>
+            <div class="card p-5"><p class="font-mono text-xs text-muted">Full Stack</p><h3 class="mt-1 font-semibold" data-i18n="journey.s6">Application Full Stack complète</h3></div>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ============================== CONTACT ============================== -->
+    <section id="contact" class="section border-t border-line bg-surface/50">
+      <div class="container-page grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+        <div class="reveal">
+          <span class="eyebrow" data-i18n="contact.eyebrow">Contact</span>
+          <h2 class="title" data-i18n="contact.title">Construisons quelque chose ensemble</h2>
+          <p class="mt-4 leading-relaxed text-muted" data-i18n="contact.sub">Une idée, une question ou une opportunité ? Écrivez-moi : chaque champ est vérifié en direct pour que votre message arrive complet.</p>
+          <ul class="mt-8 space-y-4 text-sm">
+            <li class="flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent"><svg class="icon"><use href="#i-github"/></svg></span><a class="font-medium hover:text-accent" href="https://github.com/fanniloujein" target="_blank" rel="noopener">github.com/fanniloujein</a></li>
+            <li class="flex items-center gap-3"><span class="grid h-10 w-10 place-items-center rounded-xl bg-accent/10 text-accent"><svg class="icon"><use href="#i-clock"/></svg></span><span><span data-i18n="contact.local">Mon heure locale :</span> <strong id="contact-time" class="font-mono">--:--</strong></span></li>
+          </ul>
+        </div>
+
+        <form id="contact-form" class="card reveal space-y-5 p-6 sm:p-8" novalidate>
+          <!-- Honeypot (anti-spam): hidden from humans -->
+          <div class="hidden" aria-hidden="true"><label>Website <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
+
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="name" class="field-label"><span data-i18n="form.name">Nom complet</span> <span class="text-bad">*</span></label>
+              <input id="name" name="name" type="text" class="field" autocomplete="name" placeholder="Ada Lovelace" aria-describedby="name-error" required />
+              <p id="name-error" class="field-error" role="alert"></p>
+            </div>
+            <div>
+              <label for="email" class="field-label"><span data-i18n="form.email">E-mail</span> <span class="text-bad">*</span></label>
+              <input id="email" name="email" type="email" class="field" autocomplete="email" placeholder="ada@exemple.com" data-i18n-placeholder="form.emailPh" aria-describedby="email-error" required />
+              <p id="email-error" class="field-error" role="alert"></p>
+            </div>
+          </div>
+
+          <div>
+            <label for="subject" class="field-label"><span data-i18n="form.subject">Sujet</span> <span class="text-bad">*</span></label>
+            <select id="subject" name="subject" class="field" aria-describedby="subject-error" required>
+              <option value="" data-i18n="form.choose">Choisir un sujet…</option>
+              <option value="job" data-i18n="form.opt1">Opportunité de stage / emploi</option>
+              <option value="project" data-i18n="form.opt2">Projet freelance</option>
+              <option value="hello" data-i18n="form.opt3">Simplement dire bonjour</option>
+            </select>
+            <p id="subject-error" class="field-error" role="alert"></p>
+          </div>
+
+          <div>
+            <div class="flex items-baseline justify-between">
+              <label for="message" class="field-label"><span data-i18n="form.message">Message</span> <span class="text-bad">*</span></label>
+              <span id="message-count" class="font-mono text-xs text-muted">0 / 1000</span>
+            </div>
+            <textarea id="message" name="message" rows="5" maxlength="1000" class="field resize-y" placeholder="Bonjour Loujein, …" data-i18n-placeholder="form.messagePh" aria-describedby="message-error" required></textarea>
+            <p id="message-error" class="field-error" role="alert"></p>
+          </div>
+
+          <button id="submit-btn" type="submit" class="btn-primary w-full sm:w-auto">
+            <svg class="icon h-4 w-4" id="submit-icon"><use href="#i-send"/></svg>
+            <span id="submit-label" data-i18n="form.send">Envoyer le message</span>
+          </button>
+          <p class="text-xs text-muted"><span class="text-bad">*</span> <span data-i18n="form.required">Champs obligatoires</span></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================== FOOTER ============================== -->
+  <footer class="border-t border-line py-10">
+    <div class="container-page flex flex-col items-center justify-between gap-4 text-sm text-muted sm:flex-row">
+      <p>© <span id="year">2026</span> Loujein Fanni · <span data-i18n="footer.made">Fait avec HTML, Tailwind CSS et JavaScript</span></p>
+      <p class="flex items-center gap-2"><span data-i18n="footer.theme">Thème actuel :</span> <strong id="footer-theme" class="text-accent">Jour</strong></p>
+    </div>
+  </footer>
+
+  <!-- Back to top -->
+  <a href="#home" id="to-top" class="fixed bottom-6 right-6 z-40 grid h-12 w-12 translate-y-24 place-items-center rounded-full bg-ink text-bg shadow-lg transition duration-300" aria-label="Retour en haut" data-i18n-aria="footer.top">
+    <svg class="icon"><use href="#i-arrow-up"/></svg>
+  </a>
+
+  <!-- Toast -->
+  <div class="pointer-events-none fixed inset-x-0 bottom-6 z-[60] flex justify-center overflow-hidden px-4 pb-2" role="status" aria-live="polite">
+    <div id="toast" class="toast pointer-events-auto flex w-full max-w-md items-start gap-3 rounded-2xl border border-line bg-surface p-4 shadow-2xl" hidden>
+      <span class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ok/15 text-ok"><svg class="icon"><use href="#i-check"/></svg></span>
+      <div class="min-w-0 flex-1"><p id="toast-title" class="font-semibold"></p><p id="toast-text" class="mt-0.5 text-sm text-muted"></p></div>
+      <button id="toast-close" class="text-muted hover:text-ink" aria-label="Fermer" data-i18n-aria="toast.close"><svg class="icon h-4 w-4"><use href="#i-x"/></svg></button>
+    </div>
+  </div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
