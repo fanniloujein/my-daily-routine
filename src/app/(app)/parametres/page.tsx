@@ -7,6 +7,7 @@ import { ReminderStatus } from "@/components/ReminderStatus";
 import { api, refreshAll, useApi } from "@/lib/client";
 import { useMe } from "@/lib/hooks";
 import { LOCALES } from "@/i18n";
+import { CURRENCIES } from "@/lib/billing";
 import type { UserSettings } from "@/lib/validation";
 
 export default function SettingsPage() {
@@ -100,6 +101,15 @@ export default function SettingsPage() {
             </Field>
             <Field label="Déjeuner — fin">
               <input type="time" className="input" value={s.lunchEnd ?? ""} onChange={(e) => setS({ ...s, lunchEnd: e.target.value })} />
+            </Field>
+            <Field label="Devise (paiements et revenus)" className="col-span-2">
+              <select className="input" value={s.currency} onChange={(e) => setS({ ...s, currency: e.target.value })}>
+                {Object.entries(CURRENCIES).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
             </Field>
             <Field label="Objectif allemand (min / semaine)" className="col-span-2">
               <input type="number" min={0} step={15} className="input" value={s.germanWeeklyMinutes} onChange={(e) => setS({ ...s, germanWeeklyMinutes: Number(e.target.value) || 0 })} />

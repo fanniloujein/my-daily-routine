@@ -5,6 +5,7 @@ export const fr = {
   "nav.planning": "Planning",
   "nav.tutoring": "Cours particuliers",
   "nav.freelance": "Projets freelance",
+  "nav.income": "Revenus",
   "nav.german": "Allemand",
   "nav.health": "Santé",
   "nav.sport": "Sport",

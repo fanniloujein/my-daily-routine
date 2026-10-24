@@ -6,6 +6,7 @@ export const en: Partial<Dict> = {
   "nav.planning": "Planner",
   "nav.tutoring": "Tutoring",
   "nav.freelance": "Freelance projects",
+  "nav.income": "Income",
   "nav.german": "German",
   "nav.health": "Health",
   "nav.sport": "Sport",

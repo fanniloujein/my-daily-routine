@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Bell, BookOpenCheck, CalendarDays, ChartColumn, Clapperboard, Code, Dumbbell, GraduationCap, HeartPulse, Languages,
-  LayoutDashboard, LogOut, Menu, MessagesSquare, Monitor, Moon, Plus, Settings, Sun, Tags, X, Zap, ListTodo, FolderKanban, Pill,
+  LayoutDashboard, LogOut, Menu, Wallet, MessagesSquare, Monitor, Moon, Plus, Settings, Sun, Tags, X, Zap, ListTodo, FolderKanban, Pill,
 } from "lucide-react";
 import { UiProvider, Modal, Button, useUi } from "./ui";
 import { ActivityEditorProvider, useActivityEditor } from "./activity/ActivityEditorContext";
@@ -22,6 +22,7 @@ const NAV: { href: string; key: DictKey; icon: typeof LayoutDashboard }[] = [
   { href: "/assistant", key: "nav.assistant", icon: MessagesSquare },
   { href: "/cours", key: "nav.tutoring", icon: GraduationCap },
   { href: "/projets", key: "nav.freelance", icon: Code },
+  { href: "/revenus", key: "nav.income", icon: Wallet },
   { href: "/allemand", key: "nav.german", icon: Languages },
   { href: "/sante", key: "nav.health", icon: HeartPulse },
   { href: "/sport", key: "nav.sport", icon: Dumbbell },

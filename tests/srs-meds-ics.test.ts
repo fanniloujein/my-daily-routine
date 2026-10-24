@@ -59,3 +59,32 @@ describe("Que puis-je faire maintenant ?", () => {
     expect(s[0].title).toContain("Dark");
   });
 });
+
+import { lessonPrice, monthSituation, unpaidLessons, addMonthsStr } from "@/lib/billing";
+describe("facturation des cours", () => {
+  it("calcule le prix d'une séance selon le mode", () => {
+    expect(lessonPrice("SESSION", 25, 90)).toBe(25);
+    expect(lessonPrice("HOUR", 20, 90)).toBe(30);
+    expect(lessonPrice("MONTH", 120, 60)).toBeNull();
+    expect(lessonPrice("FREE", 20, 60)).toBeNull();
+    expect(lessonPrice("SESSION", null, 60)).toBeNull();
+  });
+  it("situation mensuelle par séance : dû, payé, reste", () => {
+    const lessons = [
+      { date: "2026-10-03", status: "DONE", price: 25, incomeId: "p1" },
+      { date: "2026-10-10", status: "DONE", price: 25, incomeId: null },
+      { date: "2026-10-17", status: "CANCELLED", price: 25, incomeId: null },
+      { date: "2026-10-24", status: "PLANNED", price: 25, incomeId: null },
+      { date: "2026-09-26", status: "DONE", price: 25, incomeId: null },
+    ];
+    expect(monthSituation({ billingMode: "SESSION", rate: 25 }, lessons, 0, "2026-10")).toMatchObject({ sessions: 2, due: 50, paid: 25, remaining: 25 });
+    expect(unpaidLessons(lessons).map((l) => l.date)).toEqual(["2026-10-10", "2026-09-26"]);
+  });
+  it("forfait mensuel : dû seulement s'il y a des séances ce mois-là", () => {
+    const lessons = [{ date: "2026-10-03", status: "DONE", price: null, incomeId: null }];
+    expect(monthSituation({ billingMode: "MONTH", rate: 120 }, lessons, 0, "2026-10")).toMatchObject({ due: 120, remaining: 120 });
+    expect(monthSituation({ billingMode: "MONTH", rate: 120 }, lessons, 120, "2026-10")).toMatchObject({ due: 120, remaining: 0 });
+    expect(monthSituation({ billingMode: "MONTH", rate: 120 }, lessons, 0, "2026-11")).toMatchObject({ due: 0 });
+    expect(addMonthsStr("2026-12", 1)).toBe("2027-01");
+  });
+});

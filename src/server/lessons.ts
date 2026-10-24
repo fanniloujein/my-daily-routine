@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { HttpError } from "@/lib/auth";
 import { addDays, formatTime, minutesUntil, timeToMin, today, type DateStr } from "@/lib/dates";
 import { PREP_CHECKLIST } from "@/lib/constants";
+import { lessonPrice } from "@/lib/billing";
 import { categoryForKind } from "./categories";
 import { findSlot } from "./scheduling";
 
@@ -39,6 +40,7 @@ export async function createLesson(userId: string, input: LessonCreate) {
       subject: input.subject,
       chapter: input.chapter,
       prepMinutes: input.prepMinutes,
+      price: lessonPrice(student.billingMode, student.rate, timeToMin(input.endTime) - timeToMin(input.startTime)),
       remarks: input.remarks ?? null,
       nextSteps: input.nextSteps ?? null,
       isDemo: !!input.isDemo,

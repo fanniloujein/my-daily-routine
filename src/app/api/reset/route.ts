@@ -14,6 +14,7 @@ export const POST = route(async ({ req, user }) => {
   const userId = user.id;
   await prisma.$transaction([
     prisma.activity.deleteMany({ where: { userId } }),
+    prisma.income.deleteMany({ where: { userId } }),
     prisma.lesson.deleteMany({ where: { userId } }),
     prisma.student.deleteMany({ where: { userId } }),
     prisma.project.deleteMany({ where: { userId } }),

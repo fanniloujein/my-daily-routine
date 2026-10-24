@@ -9,6 +9,8 @@ import { addDays, addMinutesToTime, formatDuration, formatTime, startOfWeek, tim
 import { COLOR_PALETTE } from "@/lib/constants";
 import type { Readiness } from "@/server/lessons";
 import { NameTag, textOn } from "@/components/NameTag";
+import { PaymentsView, rateLabel, useMoney } from "@/components/Payments";
+import { BILLING_LABELS, type BillingMode } from "@/lib/billing";
 
 type DetailTab = "prep" | "after" | "edit";
 type PrepItem = { id: string; label: string; done: boolean; order: number };
@@ -26,6 +28,8 @@ type Student = {
   isGroup: boolean;
   members: Person[];
   groups: Person[];
+  billingMode: BillingMode;
+  rate: number | null;
   lessonsDone: number;
   nextLesson: { date: string; startTime: string; subject: string } | null;
 };
@@ -41,6 +45,8 @@ type Lesson = {
   prepMinutes: number;
   remarks: string | null;
   nextSteps: string | null;
+  price: number | null;
+  incomeId: string | null;
   student: { id: string; name: string; color: string; level: string | null; isGroup?: boolean; members?: Person[] };
   prepItems: PrepItem[];
   resources: Resource[];
@@ -61,7 +67,7 @@ export default function CoursPage() {
 function Cours() {
   const params = useSearchParams();
   const router = useRouter();
-  const [tab, setTab] = useState<"upcoming" | "students" | "past">("upcoming");
+  const [tab, setTab] = useState<"upcoming" | "students" | "past" | "payments">("upcoming");
   const [view, setView] = useState<"table" | "week">("table");
   const [fl, setFl] = useStoredFilters();
   const [sq, setSq] = useState("");
@@ -153,10 +159,13 @@ function Cours() {
               { value: "upcoming", label: `À venir (${upcoming.data!.length})` },
               { value: "students", label: `Élèves et groupes (${activeStudents.length + groups.length})` },
               { value: "past", label: "Historique" },
+              { value: "payments", label: "💶 Paiements" },
             ]}
           />
 
-          {tab !== "students" && (upcoming.data!.length > 0 || (past.data ?? []).length > 0) && (
+          {tab === "payments" && <PaymentsView onEditStudent={(id) => { const st = all.find((x) => x.id === id); if (st) setStudentForm(st); }} />}
+
+          {(tab === "upcoming" || tab === "past") && (upcoming.data!.length > 0 || (past.data ?? []).length > 0) && (
             <FilterBar
               value={fl}
               onChange={setFl}
@@ -497,6 +506,7 @@ function FilterBar({
 
 function PersonCard({ s, onOpen, onPlan }: { s: Student; onOpen: () => void; onPlan: () => void }) {
   const t = today();
+  const { fmt } = useMoney();
   return (
     <div className={cx("card flex flex-col overflow-hidden", s.archived && "opacity-60")}>
       <div className="h-1.5" style={{ background: s.color }} />
@@ -514,7 +524,8 @@ function PersonCard({ s, onOpen, onPlan }: { s: Student; onOpen: () => void; onP
         )}
         {!s.isGroup && s.groups.length > 0 && <p className="mt-2 text-xs text-ink-2">Groupe : {s.groups.map((g) => g.name).join(", ")}</p>}
         {s.goals && <p className="mt-2 line-clamp-2 text-xs text-ink-2">🎯 {s.goals}</p>}
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-2 text-xs text-ink-2">💶 {rateLabel(s.billingMode, s.rate, fmt)}</p>
+        <p className="mt-2 text-xs text-muted">
           {s.nextLesson ? (
             <>
               Prochaine séance : <span className="font-medium text-ink-2">{relativeDay(s.nextLesson.date, t)} à {formatTime(s.nextLesson.startTime)}</span>
@@ -542,6 +553,9 @@ function PersonCard({ s, onOpen, onPlan }: { s: Student; onOpen: () => void; onP
 /** Tableau des séances (ordinateur) ; liste compacte sur téléphone. */
 function LessonTable({ lessons, onOpen, past }: { lessons: Lesson[]; onOpen: (id: string, tab?: DetailTab) => void; past?: boolean }) {
   const t = today();
+  const { fmt } = useMoney();
+  const payBadge = (l: Lesson) =>
+    l.incomeId ? <Badge tone="success">Payée ✓</Badge> : l.price && l.status === "DONE" ? <Badge tone="danger">À payer · {fmt(l.price)}</Badge> : l.price && l.status !== "CANCELLED" ? <Badge>{fmt(l.price)}</Badge> : <span className="text-xs text-muted">—</span>;
   const [all, setAll] = useState(false);
   const shown = all ? lessons : lessons.slice(0, 15);
   const status = (l: Lesson) => {
@@ -559,6 +573,7 @@ function LessonTable({ lessons, onOpen, past }: { lessons: Lesson[]; onOpen: (id
               <th className="py-2 pr-3 font-medium">Élève / groupe</th>
               <th className="py-2 pr-3 font-medium">Matière</th>
               <th className="py-2 pr-3 font-medium">{past ? "Statut" : "Préparation"}</th>
+              {past && <th className="py-2 pr-3 font-medium">Paiement</th>}
               <th className="py-2 font-medium">{past ? "Remarque" : ""}</th>
             </tr>
           </thead>
@@ -584,6 +599,7 @@ function LessonTable({ lessons, onOpen, past }: { lessons: Lesson[]; onOpen: (id
                   <td className="py-2.5 pr-3">
                     <Badge tone={st.tone}>{st.text}</Badge>
                   </td>
+                  {past && <td className="py-2.5 pr-3">{payBadge(l)}</td>}
                   <td className="max-w-[16rem] py-2.5 text-right">
                     {past ? (
                       <span className="line-clamp-1 text-left text-xs text-muted">{l.remarks ?? "—"}</span>
@@ -615,7 +631,10 @@ function LessonTable({ lessons, onOpen, past }: { lessons: Lesson[]; onOpen: (id
                     {l.subject}
                     {l.chapter ? ` · ${l.chapter}` : ""}
                   </div>
-                  <Badge tone={st.tone}>{st.text}</Badge>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge tone={st.tone}>{st.text}</Badge>
+                    {past && payBadge(l)}
+                  </div>
                 </div>
               </button>
             </li>
@@ -1084,7 +1103,10 @@ function StudentForm({ open, initial, students, onClose }: { open: boolean; init
     color: initial.color ?? freeColor,
     archived: initial.archived ?? false,
     memberIds: (initial.members ?? []).map((m) => m.id),
+    billingMode: (initial.billingMode ?? "SESSION") as BillingMode,
+    rate: initial.rate != null ? String(initial.rate) : "",
   });
+  const { currency, fmt } = useMoney();
   const [saving, setSaving] = useState(false);
   const candidates = students.filter((x) => !x.isGroup && !x.archived && x.id !== initial.id);
   async function save() {
@@ -1092,7 +1114,7 @@ function StudentForm({ open, initial, students, onClose }: { open: boolean; init
     if (isGroup && f.memberIds.length < 2) return toast("Choisis au moins 2 élèves pour le groupe", "danger");
     setSaving(true);
     try {
-      const body = { ...f, isGroup, level: f.level || null, subjects: f.subjects || null, goals: f.goals || null, notes: f.notes || null };
+      const body = { ...f, isGroup, level: f.level || null, subjects: f.subjects || null, goals: f.goals || null, notes: f.notes || null, rate: f.rate === "" || f.billingMode === "FREE" ? null : Number(f.rate) };
       if (initial.id) await api(`/api/students/${initial.id}`, { method: "PATCH", body });
       else await api("/api/students", { body });
       await refreshAll();
@@ -1151,6 +1173,40 @@ function StudentForm({ open, initial, students, onClose }: { open: boolean; init
           <Field label="Matières (facultatif)">
             <input className="input" value={f.subjects} onChange={(e) => setF({ ...f, subjects: e.target.value })} placeholder="Maths, Physique" />
           </Field>
+        </div>
+        <div className="space-y-2 rounded-2xl border border-line p-3">
+          <span className="label">💶 Paiement {isGroup ? "du groupe" : "de l'élève"}</span>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(BILLING_LABELS) as BillingMode[]).map((m) => (
+              <button key={m} type="button" onClick={() => setF({ ...f, billingMode: m })} className={chip(f.billingMode === m)}>
+                {BILLING_LABELS[m]}
+              </button>
+            ))}
+          </div>
+          {f.billingMode !== "FREE" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                step="0.5"
+                className="input w-36"
+                value={f.rate}
+                onChange={(e) => setF({ ...f, rate: e.target.value })}
+                placeholder="Montant"
+                aria-label="Tarif"
+              />
+              <span className="text-sm text-ink-2">
+                {currency} {f.billingMode === "SESSION" ? "par séance" : f.billingMode === "HOUR" ? "par heure" : "par mois"}
+              </span>
+            </div>
+          )}
+          <p className="text-xs text-muted">
+            {f.billingMode === "SESSION" && "Chaque séance réalisée est due. Tu coches ensuite celles qui sont payées."}
+            {f.billingMode === "HOUR" && `Le prix d'une séance est calculé selon sa durée (ex. 1 h 30 = ${f.rate ? fmt(Number(f.rate) * 1.5) : "1,5 × le tarif"}).`}
+            {f.billingMode === "MONTH" && "Le forfait est dû chaque mois où il y a au moins une séance."}
+            {f.billingMode === "FREE" && "Aucun paiement suivi pour " + (isGroup ? "ce groupe." : "cet élève.")}
+            {isGroup && f.billingMode !== "FREE" && " Pour un groupe, indique le montant total payé pour le groupe."}
+          </p>
         </div>
         <div>
           <span className="label">Couleur {isGroup ? "du groupe" : "de l'élève"}</span>
@@ -1397,6 +1453,7 @@ function LessonDetail({ id, onClose, initialTab }: { id: string; onClose: () => 
             <Field label="À revoir la prochaine fois">
               <textarea className="input min-h-[60px]" value={nextSteps ?? ""} onChange={(e) => setNextSteps(e.target.value)} placeholder="Ex. Refaire 3 exercices sur les priorités opératoires." />
             </Field>
+            <LessonPayment l={l} onChanged={() => mutate()} />
             <div className="flex flex-wrap items-end gap-2 rounded-2xl bg-surface-2/60 p-3">
               <Field label="Prévoir une révision le">
                 <input type="date" className="input h-9" value={revisionDate} onChange={(e) => setRevisionDate(e.target.value)} />
@@ -1500,5 +1557,78 @@ function StudentDetail({ id, onClose, onEdit, onNewLesson, onOpenLesson }: { id:
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Paiement d'une séance : montant, statut payé / à payer, encaissement en 1 clic. */
+function LessonPayment({ l, onChanged }: { l: Lesson; onChanged: () => void }) {
+  const { fmt, currency } = useMoney();
+  const { toast, confirm } = useUi();
+  const [price, setPrice] = useState(l.price != null ? String(l.price) : "");
+  const [method, setMethod] = useState("CASH");
+  const [busy, setBusy] = useState(false);
+  const monthly = !l.price && !l.incomeId;
+
+  async function savePrice() {
+    await api(`/api/lessons/${l.id}`, { method: "PATCH", body: { price: price === "" ? null : Number(price) } });
+    onChanged();
+    refreshAll();
+    toast("Montant enregistré");
+  }
+  async function pay() {
+    const amount = price === "" ? null : Number(price);
+    if (!amount) return toast("Indique d'abord le montant de la séance", "danger");
+    setBusy(true);
+    try {
+      await api(`/api/lessons/${l.id}/pay`, { body: { amount, method } });
+      onChanged();
+      await refreshAll();
+      toast(`Séance payée ✓ — ${fmt(amount)} ajoutés à tes revenus`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Erreur", "danger");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function unpay() {
+    if (!(await confirm({ title: "Annuler le paiement ?", message: "La séance redeviendra « à payer » et le montant sera retiré de tes revenus.", confirmLabel: "Annuler le paiement", danger: true }))) return;
+    await api(`/api/lessons/${l.id}/pay`, { method: "DELETE" });
+    onChanged();
+    await refreshAll();
+    toast("Paiement annulé");
+  }
+
+  return (
+    <div className="space-y-2 rounded-2xl border border-line p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm font-semibold text-ink">💶 Paiement de la séance</span>
+        {l.incomeId ? <Badge tone="success">Payée ✓</Badge> : l.price ? <Badge tone={l.status === "DONE" ? "danger" : "neutral"}>{l.status === "DONE" ? "À payer" : "Pas encore due"}</Badge> : <Badge>Forfait / gratuit</Badge>}
+      </div>
+      {l.incomeId ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-2">
+          <span>{l.price ? `${fmt(l.price)} reçus — comptés dans tes revenus.` : "Réglée."}</span>
+          <Button size="sm" variant="ghost" onClick={unpay}>
+            Annuler le paiement
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label={`Montant (${currency})`}>
+            <input type="number" min={0} step="0.5" className="input h-9 w-28" value={price} onChange={(e) => setPrice(e.target.value)} onBlur={() => String(l.price ?? "") !== price && savePrice()} />
+          </Field>
+          <select className="input h-9 w-auto py-1" value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Moyen de paiement">
+            <option value="CASH">Espèces</option>
+            <option value="TRANSFER">Virement</option>
+            <option value="CARD">Carte</option>
+            <option value="CHECK">Chèque</option>
+            <option value="OTHER">Autre</option>
+          </select>
+          <Button size="sm" variant="success" onClick={pay} loading={busy}>
+            Marquer comme payée
+          </Button>
+        </div>
+      )}
+      {monthly && !l.incomeId && <p className="text-xs text-muted">Élève au forfait mensuel ou gratuit : le paiement se fait dans l&apos;onglet « 💶 Paiements ». Tu peux aussi saisir un montant ici pour cette séance.</p>}
+    </div>
   );
 }

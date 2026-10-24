@@ -7,7 +7,7 @@ export const BACKUP_VERSION = 1;
 
 /** Export complet des données de l'utilisatrice (JSON). Les données de santé sont incluses seulement sur demande. */
 export async function exportData(userId: string, includeHealth: boolean) {
-  const [user, categories, activities, energy, students, lessons, projects, germanSessions, flashcards, medications, sportProfile, sportSessions, media, leisure, reviews] =
+  const [user, categories, activities, energy, students, lessons, projects, germanSessions, flashcards, medications, sportProfile, sportSessions, media, leisure, reviews, incomes] =
     await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true, email: true, locale: true, settings: true } }),
       prisma.category.findMany({ where: { userId } }),
@@ -24,6 +24,7 @@ export async function exportData(userId: string, includeHealth: boolean) {
       prisma.mediaItem.findMany({ where: { userId } }),
       prisma.leisureIdea.findMany({ where: { userId } }),
       prisma.weeklyReview.findMany({ where: { userId } }),
+      prisma.income.findMany({ where: { userId } }),
     ]);
   return {
     app: "my-life-os",
@@ -50,6 +51,7 @@ export async function exportData(userId: string, includeHealth: boolean) {
     media,
     leisure,
     reviews,
+    incomes,
   };
 }
 
@@ -70,6 +72,7 @@ const backupSchema = z.object({
   media: z.array(z.any()).default([]),
   leisure: z.array(z.any()).default([]),
   reviews: z.array(z.any()).default([]),
+  incomes: z.array(z.any()).default([]),
   includesHealth: z.boolean().default(false),
   user: z.object({ settings: z.any().optional() }).partial().optional(),
 });
@@ -94,6 +97,7 @@ export async function importData(userId: string, raw: unknown) {
   await prisma.$transaction(
     async (tx) => {
       await tx.activity.deleteMany({ where: { userId } });
+      await tx.income.deleteMany({ where: { userId } });
       await tx.lesson.deleteMany({ where: { userId } });
       await tx.student.deleteMany({ where: { userId } });
       await tx.project.deleteMany({ where: { userId } });
@@ -116,6 +120,7 @@ export async function importData(userId: string, raw: unknown) {
         if (members.length) await tx.student.update({ where: { id: String(s.id) }, data: { members: { connect: members } } });
       }
       await tx.resource.createMany({ data: b.students.flatMap((s: Row) => (s.resources as Row[]) ?? []) as never });
+      await tx.income.createMany({ data: b.incomes.map((x: Row) => withUser(strip(x, "userId"))) as never });
       await tx.lesson.createMany({ data: b.lessons.map((l: Row) => withUser(strip(l, "userId", "prepItems", "resources"))) as never });
       await tx.prepItem.createMany({ data: b.lessons.flatMap((l: Row) => (l.prepItems as Row[]) ?? []) as never });
       await tx.resource.createMany({ data: b.lessons.flatMap((l: Row) => ((l.resources as Row[]) ?? []).filter((r) => !r.studentId)) as never });

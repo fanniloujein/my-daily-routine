@@ -71,6 +71,20 @@ export const studentSchema = z.object({
   archived: z.boolean().default(false),
   isGroup: z.boolean().default(false),
   memberIds: z.array(z.string()).max(50).optional(),
+  billingMode: z.enum(["SESSION", "HOUR", "MONTH", "FREE"]).default("SESSION"),
+  rate: z.coerce.number().min(0).max(1_000_000).nullish(),
+});
+
+export const incomeSchema = z.object({
+  date: dateStr,
+  amount: z.coerce.number().positive("Le montant doit être supérieur à 0").max(10_000_000),
+  source: z.enum(["TUTORING", "FREELANCE", "OTHER"]).default("TUTORING"),
+  label: optText,
+  studentId: z.string().nullish(),
+  period: z.string().regex(/^\d{4}-\d{2}$/, "Mois invalide").nullish(),
+  method: z.enum(["CASH", "TRANSFER", "CARD", "CHECK", "OTHER"]).nullish(),
+  note: optText,
+  lessonIds: z.array(z.string()).max(200).default([]),
 });
 
 export const lessonSchema = z
@@ -206,6 +220,7 @@ export const settingsSchema = z.object({
   germanWeeklyMinutes: z.coerce.number().int().min(0).max(3000).default(120),
   privacyMode: z.boolean().default(true),
   icsHideMedNames: z.boolean().default(true),
+  currency: z.string().regex(/^[A-Z]{3}$/).default("EUR"),
 });
 
 export type UserSettings = z.infer<typeof settingsSchema>;
@@ -220,6 +235,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   germanWeeklyMinutes: 120,
   privacyMode: true,
   icsHideMedNames: true,
+  currency: "EUR",
 };
 
 export function readSettings(raw: unknown): UserSettings {

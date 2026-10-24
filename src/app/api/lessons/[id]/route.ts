@@ -29,6 +29,7 @@ const patchSchema = z.object({
   remarks: z.string().nullish(),
   nextSteps: z.string().nullish(),
   allowConflict: z.boolean().optional(),
+  price: z.number().min(0).max(1_000_000).nullable().optional(),
 });
 
 export const PATCH = route<{ id: string }>(async ({ req, user, params }) => {
@@ -53,6 +54,7 @@ export const PATCH = route<{ id: string }>(async ({ req, user, params }) => {
       status: merged.status,
       remarks: merged.remarks,
       nextSteps: merged.nextSteps,
+      ...(raw.price !== undefined ? { price: raw.price } : {}),
     },
   });
   // Synchroniser le créneau de la séance dans l'agenda
