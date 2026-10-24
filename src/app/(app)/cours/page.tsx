@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, CalendarPlus, Check, ClipboardCheck, ExternalLink, FileText, GraduationCap, Link2, ListChecks, Pencil, Plus, Trash2, UserPlus, Users } from "lucide-react";
+import { BookOpen, CalendarPlus, Check, ClipboardCheck, ExternalLink, FileText, GraduationCap, Link2, ListChecks, Pencil, Plus, Search, SlidersHorizontal, Trash2, UserPlus, Users, X } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Loading, Modal, Notice, PageHeader, Progress, Segmented, useUi } from "@/components/ui";
 import { ApiError, api, cx, fmtDateLong, fmtDayNum, refreshAll, relativeDay, useApi } from "@/lib/client";
 import { addDays, addMinutesToTime, formatDuration, formatTime, startOfWeek, timeToMin, today } from "@/lib/dates";
@@ -63,7 +63,9 @@ function Cours() {
   const router = useRouter();
   const [tab, setTab] = useState<"upcoming" | "students" | "past">("upcoming");
   const [view, setView] = useState<"table" | "week">("table");
-  const [filter, setFilter] = useState<string>("all");
+  const [fl, setFl] = useStoredFilters();
+  const [sq, setSq] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [lessonForm, setLessonForm] = useState<{ studentId?: string } | null>(null);
   const [studentForm, setStudentForm] = useState<Partial<Student> | null>(null);
   const [lesson, setLesson] = useState<{ id: string; tab?: DetailTab } | null>(null);
@@ -87,12 +89,15 @@ function Cours() {
   const next = upcoming.data?.[0];
   const loading = !students.data || !upcoming.data;
   const step = activeStudents.length === 0 ? 1 : (upcoming.data?.length ?? 0) === 0 ? 2 : 3;
-  // Filtre : un élève voit aussi les séances des groupes dont il fait partie
-  const matches = (l: Lesson) =>
-    filter === "all" || l.studentId === filter || (l.student.members ?? []).some((m) => m.id === filter);
-  const upcomingFiltered = (upcoming.data ?? []).filter(matches);
-  const pastFiltered = (past.data ?? []).filter(matches);
   const filterable = all.filter((s) => !s.archived);
+  const subjectsList = [...new Set([...(upcoming.data ?? []), ...(past.data ?? [])].map((l) => l.subject.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
+  const upcomingFiltered = applyFilters(upcoming.data ?? [], fl, "upcoming");
+  const pastFiltered = applyFilters(past.data ?? [], fl, "past");
+  const activeCount = countActive(fl, tab === "past" ? "past" : "upcoming");
+  const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const studentMatch = (st: Student) =>
+    (showArchived || !st.archived) &&
+    (!sq.trim() || norm(`${st.name} ${st.level ?? ""} ${st.subjects ?? ""} ${st.members.map((m) => m.name).join(" ")}`).includes(norm(sq.trim())));
 
   return (
     <div>
@@ -151,18 +156,16 @@ function Cours() {
             ]}
           />
 
-          {tab !== "students" && filterable.length > 1 && (
-            <div className="mb-4 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-xs text-muted">Afficher :</span>
-              <button onClick={() => setFilter("all")} className={cx("rounded-full border px-3 py-1 text-xs font-medium", filter === "all" ? "border-ink bg-ink text-bg" : "border-line text-ink-2")}>
-                Tous
-              </button>
-              {filterable.map((s) => (
-                <button key={s.id} onClick={() => setFilter(filter === s.id ? "all" : s.id)} className={cx("rounded-full transition", filter !== "all" && filter !== s.id && "opacity-40")}>
-                  <NameTag name={s.name} color={s.color} group={s.isGroup} />
-                </button>
-              ))}
-            </div>
+          {tab !== "students" && (upcoming.data!.length > 0 || (past.data ?? []).length > 0) && (
+            <FilterBar
+              value={fl}
+              onChange={setFl}
+              people={filterable}
+              subjects={subjectsList}
+              mode={tab === "past" ? "past" : "upcoming"}
+              resultCount={tab === "past" ? pastFiltered.length : upcomingFiltered.length}
+              activeCount={activeCount}
+            />
           )}
 
           {tab === "upcoming" &&
@@ -176,7 +179,7 @@ function Cours() {
               />
             ) : (
               <div className="space-y-5">
-                {filter === "all" && <NextLesson l={next} onPrepare={() => setLesson({ id: next.id, tab: "prep" })} onOpen={() => setLesson({ id: next.id })} />}
+                {activeCount === 0 && <NextLesson l={next} onPrepare={() => setLesson({ id: next.id, tab: "prep" })} onOpen={() => setLesson({ id: next.id })} />}
                 <Card
                   title="Mes séances"
                   action={
@@ -191,7 +194,7 @@ function Cours() {
                   }
                 >
                   {upcomingFiltered.length === 0 ? (
-                    <Empty title="Aucune séance à venir pour ce filtre" />
+                    <Empty title="Aucune séance ne correspond aux filtres" action={<Button size="sm" variant="secondary" onClick={() => setFl(DEFAULT_FILTERS)}>Effacer les filtres</Button>} />
                   ) : view === "table" ? (
                     <LessonTable lessons={upcomingFiltered} onOpen={(id, tb) => setLesson({ id, tab: tb })} />
                   ) : (
@@ -203,6 +206,15 @@ function Cours() {
 
           {tab === "students" && (
             <div className="space-y-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative min-w-[14rem] flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                  <input className="input pl-9" placeholder="Rechercher un élève, un niveau, une matière…" value={sq} onChange={(e) => setSq(e.target.value)} aria-label="Rechercher un élève" />
+                </div>
+                <label className="flex items-center gap-2 text-sm text-ink-2">
+                  <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="h-4 w-4 accent-[rgb(var(--primary))]" /> Afficher les archivés
+                </label>
+              </div>
               <section>
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="section-title">Mes élèves ({activeStudents.length})</h2>
@@ -210,13 +222,13 @@ function Cours() {
                     <UserPlus className="h-3.5 w-3.5" /> Ajouter un élève
                   </Button>
                 </div>
-                {all.filter((s) => !s.isGroup).length === 0 ? (
-                  <Empty icon={<Users className="h-8 w-8" />} title="Aucun élève pour l'instant">
-                    Il suffit d&apos;un prénom. Le niveau et les matières sont facultatifs.
+                {all.filter((s) => !s.isGroup && studentMatch(s)).length === 0 ? (
+                  <Empty icon={<Users className="h-8 w-8" />} title={sq ? "Aucun élève ne correspond à ta recherche" : "Aucun élève pour l'instant"}>
+                    {sq ? "" : "Il suffit d'un prénom. Le niveau et les matières sont facultatifs."}
                   </Empty>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {all.filter((s) => !s.isGroup).map((s) => (
+                    {all.filter((s) => !s.isGroup && studentMatch(s)).map((s) => (
                       <PersonCard key={s.id} s={s} onOpen={() => setStudentId(s.id)} onPlan={() => setLessonForm({ studentId: s.id })} />
                     ))}
                   </div>
@@ -229,13 +241,13 @@ function Cours() {
                     <Users className="h-3.5 w-3.5" /> Créer un groupe
                   </Button>
                 </div>
-                {groups.length === 0 ? (
+                {groups.filter(studentMatch).length === 0 ? (
                   <Empty icon={<Users className="h-8 w-8" />} title="Aucun groupe">
                     Un groupe réunit plusieurs élèves pour un cours collectif (ex. « Groupe Brevet » avec Lina et Sarah). {activeStudents.length < 2 ? "Ajoute d'abord au moins 2 élèves." : ""}
                   </Empty>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {groups.map((s) => (
+                    {groups.filter(studentMatch).map((s) => (
                       <PersonCard key={s.id} s={s} onOpen={() => setStudentId(s.id)} onPlan={() => setLessonForm({ studentId: s.id })} />
                     ))}
                   </div>
@@ -246,7 +258,10 @@ function Cours() {
 
           {tab === "past" &&
             (pastFiltered.length === 0 ? (
-              <Empty title="Aucune séance passée pour l'instant" />
+              <Empty
+                title={(past.data ?? []).length ? "Aucune séance ne correspond aux filtres" : "Aucune séance passée pour l'instant"}
+                action={activeCount ? <Button size="sm" variant="secondary" onClick={() => setFl(DEFAULT_FILTERS)}>Effacer les filtres</Button> : undefined}
+              />
             ) : (
               <Card title="Séances passées">
                 <LessonTable lessons={pastFiltered} past onOpen={(id) => setLesson({ id, tab: "after" })} />
@@ -266,6 +281,215 @@ function Cours() {
           onNewLesson={() => { const id = studentId; setStudentId(null); setLessonForm({ studentId: id }); }}
           onOpenLesson={(id) => { setStudentId(null); setLesson({ id }); }}
         />
+      )}
+    </div>
+  );
+}
+
+// ───────────── Filtres ─────────────
+
+type Filters = {
+  q: string;
+  who: string; // "all" ou id d'élève / de groupe
+  kind: "all" | "student" | "group";
+  period: "all" | "today" | "week" | "next7" | "month" | "custom";
+  from: string;
+  to: string;
+  subject: string;
+  prep: "all" | "todo" | "urgent" | "ready";
+  status: "all" | "DONE" | "CANCELLED" | "PLANNED";
+};
+
+const DEFAULT_FILTERS: Filters = { q: "", who: "all", kind: "all", period: "all", from: "", to: "", subject: "all", prep: "all", status: "all" };
+const FILTER_KEY = "mlos-cours-filtres";
+
+/** Filtres mémorisés sur cet appareil (facultatif : tout fonctionne sans). */
+function useStoredFilters(): [Filters, (f: Filters) => void] {
+  const [f, setF] = useState<Filters>(DEFAULT_FILTERS);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FILTER_KEY);
+      if (raw) setF({ ...DEFAULT_FILTERS, ...JSON.parse(raw) });
+    } catch {}
+  }, []);
+  const set = (v: Filters) => {
+    setF(v);
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(v));
+    } catch {}
+  };
+  return [f, set];
+}
+
+function periodRange(f: Filters, mode: "upcoming" | "past"): [string, string] | null {
+  const t = today();
+  switch (f.period) {
+    case "today":
+      return [t, t];
+    case "week": {
+      const ws = startOfWeek(t);
+      return [ws, addDays(ws, 6)];
+    }
+    case "next7":
+      return mode === "past" ? [addDays(t, -7), t] : [t, addDays(t, 6)];
+    case "month":
+      return [t.slice(0, 8) + "01", t.slice(0, 8) + "31"];
+    case "custom":
+      return [f.from || "0000-01-01", f.to || "9999-12-31"];
+    default:
+      return null;
+  }
+}
+
+function applyFilters(list: Lesson[], f: Filters, mode: "upcoming" | "past") {
+  const range = periodRange(f, mode);
+  const q = f.q.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return list.filter((l) => {
+    if (f.who !== "all" && l.studentId !== f.who && !(l.student.members ?? []).some((m) => m.id === f.who)) return false;
+    if (f.kind === "group" && !l.student.isGroup) return false;
+    if (f.kind === "student" && l.student.isGroup) return false;
+    if (range && (l.date < range[0] || l.date > range[1])) return false;
+    if (f.subject !== "all" && l.subject.trim() !== f.subject) return false;
+    if (mode === "upcoming" && f.prep !== "all") {
+      const st = l.readiness.state;
+      if (f.prep === "ready" && st !== "ready") return false;
+      if (f.prep === "urgent" && st !== "at_risk") return false;
+      if (f.prep === "todo" && st === "ready") return false;
+    }
+    if (mode === "past" && f.status !== "all" && l.status !== f.status) return false;
+    if (q) {
+      const hay = `${l.student.name} ${l.subject} ${l.chapter ?? ""} ${l.remarks ?? ""} ${(l.student.members ?? []).map((m) => m.name).join(" ")}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function countActive(f: Filters, mode: "upcoming" | "past") {
+  return [
+    f.q.trim() !== "",
+    f.who !== "all",
+    f.kind !== "all",
+    f.period !== "all",
+    f.subject !== "all",
+    mode === "upcoming" ? f.prep !== "all" : f.status !== "all",
+  ].filter(Boolean).length;
+}
+
+function FilterBar({
+  value: f,
+  onChange,
+  people,
+  subjects,
+  mode,
+  resultCount,
+  activeCount,
+}: {
+  value: Filters;
+  onChange: (f: Filters) => void;
+  people: Student[];
+  subjects: string[];
+  mode: "upcoming" | "past";
+  resultCount: number;
+  activeCount: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const set = (patch: Partial<Filters>) => onChange({ ...f, ...patch });
+  return (
+    <div className="card mb-4 space-y-3 p-3 sm:p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[12rem] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input className="input pl-9" placeholder="Rechercher (élève, matière, chapitre, remarque…)" value={f.q} onChange={(e) => set({ q: e.target.value })} aria-label="Rechercher une séance" />
+        </div>
+        <Button size="sm" variant={open || activeCount ? "soft" : "secondary"} onClick={() => setOpen(!open)} aria-expanded={open}>
+          <SlidersHorizontal className="h-4 w-4" /> Filtres{activeCount ? ` (${activeCount})` : ""}
+        </Button>
+        {activeCount > 0 && (
+          <Button size="sm" variant="ghost" onClick={() => onChange(DEFAULT_FILTERS)}>
+            <X className="h-4 w-4" /> Effacer
+          </Button>
+        )}
+        <span className="ml-auto text-xs text-muted">
+          {resultCount} séance{resultCount > 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {people.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button onClick={() => set({ who: "all" })} className={cx("rounded-full border px-3 py-1 text-xs font-medium", f.who === "all" ? "border-ink bg-ink text-bg" : "border-line text-ink-2")}>
+            Tous
+          </button>
+          {people.map((p) => (
+            <button key={p.id} onClick={() => set({ who: f.who === p.id ? "all" : p.id })} className={cx("rounded-full transition", f.who !== "all" && f.who !== p.id && "opacity-40")} aria-pressed={f.who === p.id}>
+              <NameTag name={p.name} color={p.color} group={p.isGroup} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {open && (
+        <div className="grid gap-3 border-t border-line/60 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Période">
+            <select className="input" value={f.period} onChange={(e) => set({ period: e.target.value as Filters["period"] })}>
+              <option value="all">Toutes les dates</option>
+              <option value="today">Aujourd&apos;hui</option>
+              <option value="week">Cette semaine</option>
+              <option value="next7">{mode === "past" ? "7 derniers jours" : "7 prochains jours"}</option>
+              <option value="month">Ce mois-ci</option>
+              <option value="custom">Dates personnalisées…</option>
+            </select>
+          </Field>
+          <Field label="Matière">
+            <select className="input" value={f.subject} onChange={(e) => set({ subject: e.target.value })}>
+              <option value="all">Toutes les matières</option>
+              {subjects.map((x) => (
+                <option key={x} value={x}>
+                  {x}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Type">
+            <select className="input" value={f.kind} onChange={(e) => set({ kind: e.target.value as Filters["kind"] })}>
+              <option value="all">Élèves et groupes</option>
+              <option value="student">Cours individuels</option>
+              <option value="group">Cours de groupe</option>
+            </select>
+          </Field>
+          {mode === "upcoming" ? (
+            <Field label="Préparation">
+              <select className="input" value={f.prep} onChange={(e) => set({ prep: e.target.value as Filters["prep"] })}>
+                <option value="all">Toutes</option>
+                <option value="todo">À préparer</option>
+                <option value="urgent">À préparer vite ⚠</option>
+                <option value="ready">Prêtes ✓</option>
+              </select>
+            </Field>
+          ) : (
+            <Field label="Statut">
+              <select className="input" value={f.status} onChange={(e) => set({ status: e.target.value as Filters["status"] })}>
+                <option value="all">Tous</option>
+                <option value="DONE">Réalisées</option>
+                <option value="CANCELLED">Annulées</option>
+                <option value="PLANNED">À compléter</option>
+              </select>
+            </Field>
+          )}
+          {f.period === "custom" && (
+            <>
+              <Field label="Du">
+                <input type="date" className="input" value={f.from} onChange={(e) => set({ from: e.target.value })} />
+              </Field>
+              <Field label="Au">
+                <input type="date" className="input" value={f.to} min={f.from || undefined} onChange={(e) => set({ to: e.target.value })} />
+              </Field>
+            </>
+          )}
+        </div>
       )}
     </div>
   );
