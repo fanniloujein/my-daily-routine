@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { findNextFreeSlot, type TimedItem } from "@/lib/conflicts";
-import { addDays, nowTime, today, type DateStr } from "@/lib/dates";
+import { addDays, nowTime, roundUpTime, today, type DateStr } from "@/lib/dates";
 import { getOccurrences } from "./occurrences";
 import { readSettings } from "@/lib/validation";
 
@@ -22,7 +22,7 @@ export async function findSlot(
     if (s.lunchStart && s.lunchEnd) busy.push({ id: "lunch", title: "Déjeuner", startTime: s.lunchStart, endTime: s.lunchEnd });
     let end = opts.workOnly ? s.workEnd : s.dayEnd;
     if (opts.before && opts.before.date === d && opts.before.time < end) end = opts.before.time;
-    let notBefore = d === t ? nowTime() : undefined;
+    let notBefore = d === t ? roundUpTime(nowTime()) : undefined;
     if (opts.after && opts.after.date === d && (!notBefore || opts.after.time > notBefore)) notBefore = opts.after.time;
     const slot = findNextFreeSlot(busy, opts.duration, s.dayStart, end, s.breakMin, notBefore);
     if (slot) return { date: d, ...slot };

@@ -28,3 +28,12 @@ describe("dates", () => {
     expect(formatDuration(45)).toBe("45 min");
   });
 });
+
+import { roundUpTime } from "@/lib/dates";
+describe("arrondi des heures", () => {
+  it("arrondit au quart d'heure supérieur", () => {
+    expect(roundUpTime("19:23")).toBe("19:30");
+    expect(roundUpTime("19:30")).toBe("19:30");
+    expect(roundUpTime("23:50")).toBe("23:59");
+  });
+});

@@ -134,3 +134,8 @@ export function toDateTime(date: DateStr, time: TimeStr): Date {
   const [h, mi] = time.split(":").map(Number);
   return new Date(y, mo - 1, d, h, mi, 0, 0);
 }
+
+/** Arrondit une heure au multiple supérieur de `step` minutes (19:23 → 19:30 pour 15). */
+export function roundUpTime(t: TimeStr, step = 15): TimeStr {
+  return minToTime(Math.ceil(timeToMin(t) / step) * step);
+}

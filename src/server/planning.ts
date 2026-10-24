@@ -1,6 +1,6 @@
 import type { User } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { addDays, nowTime, startOfWeek, timeToMin, today, weekday, type DateStr } from "@/lib/dates";
+import { addDays, nowTime, roundUpTime, startOfWeek, timeToMin, today, weekday, type DateStr } from "@/lib/dates";
 import { planDay, type PlanBlock, type PlanResult } from "@/lib/planner";
 import { readSettings } from "@/lib/validation";
 import { getOccurrences, patchOccurrence } from "./occurrences";
@@ -14,7 +14,7 @@ export async function buildPlan(user: User, date: DateStr, opts: { energy?: numb
 
   const occ = await getOccurrences(user.id, date, date);
   const open = occ.filter((o) => o.status !== "DONE" && o.status !== "POSTPONED");
-  const now = date === today() ? nowTime() : null;
+  const now = date === today() ? roundUpTime(nowTime()) : null;
   // Réorganiser : les tâches déjà placées mais non fixes redeviennent flexibles (rendez-vous fixes,
   // séances, récurrences, sessions de modules et loisirs ne bougent jamais ; le passé non plus).
   const movable = (o: (typeof open)[number]) =>
