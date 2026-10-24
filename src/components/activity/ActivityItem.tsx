@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, CalendarArrowUp, Check, Copy, MoreHorizontal, Pencil, Pin, Play, Repeat, SkipForward, Trash2 } from "lucide-react";
 import { Button, Field, Modal, Segmented, useUi } from "@/components/ui";
 import { CategoryIcon } from "@/components/Icon";
+import { NameTag } from "@/components/NameTag";
 import { ApiError, api, cx, fmtDayNum, refreshAll } from "@/lib/client";
 import { addDays, formatDuration, formatTime } from "@/lib/dates";
 import type { Occurrence } from "@/lib/hooks";
@@ -77,7 +78,7 @@ export function ActivityItem({ o, compact, showDate, onSelect }: { o: Occurrence
       >
         {done && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
       </button>
-      <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: o.category.color }} aria-hidden />
+      <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: o.color }} aria-hidden />
       <button className="min-w-0 flex-1 text-left" onClick={() => (onSelect ? onSelect(o) : editor.open(draftFromOccurrence(o)))}>
         <div className={cx("flex items-center gap-1.5 text-sm font-medium text-ink", done && "line-through decoration-ink/30")}>
           <span className="truncate">{o.title}</span>
@@ -86,6 +87,7 @@ export function ActivityItem({ o, compact, showDate, onSelect }: { o: Occurrence
           {o.reminders.length > 0 && o.startTime && <Bell className="h-3 w-3 shrink-0 text-warning" aria-label="Rappel" />}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+          {o.studentName && <NameTag name={o.studentName} color={o.color} size="sm" />}
           {showDate && <span>{fmtDayNum(o.date)}</span>}
           {o.startTime ? (
             <span className="font-medium text-ink-2">

@@ -17,7 +17,7 @@ export const GET = route(async ({ req, user }) => {
       ...(scope === "upcoming" ? { date: { gte: t }, status: "PLANNED" } : scope === "past" ? { OR: [{ date: { lt: t } }, { status: { not: "PLANNED" } }] } : {}),
     },
     orderBy: scope === "past" ? [{ date: "desc" }, { startTime: "desc" }] : [{ date: "asc" }, { startTime: "asc" }],
-    include: { student: true, prepItems: { orderBy: { order: "asc" } }, activities: true, resources: true },
+    include: { student: { include: { members: { select: { id: true, name: true, color: true } } } }, prepItems: { orderBy: { order: "asc" } }, activities: true, resources: true },
     take: 100,
   });
   return lessons.map((l) => ({ ...l, readiness: lessonReadiness(l, l.prepItems, l.activities.find((a) => a.lessonRole === "prep")) }));

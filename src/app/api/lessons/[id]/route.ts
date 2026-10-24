@@ -13,7 +13,7 @@ async function owned(userId: string, id: string) {
 export const GET = route<{ id: string }>(async ({ user, params }) => {
   const l = await prisma.lesson.findFirstOrThrow({
     where: { id: params.id, userId: user.id },
-    include: { student: true, prepItems: { orderBy: { order: "asc" } }, resources: true, activities: true },
+    include: { student: { include: { members: { select: { id: true, name: true, color: true } } } }, prepItems: { orderBy: { order: "asc" } }, resources: true, activities: true },
   });
   return { ...l, readiness: lessonReadiness(l, l.prepItems, l.activities.find((a) => a.lessonRole === "prep")) };
 });

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { assertGroupSize, checkMembers } from "@/server/students";
 import { body, route } from "@/lib/api";
 import { studentSchema } from "@/lib/validation";
 import { today } from "@/lib/dates";
@@ -7,8 +8,12 @@ export const GET = route(async ({ user }) => {
   const t = today();
   const students = await prisma.student.findMany({
     where: { userId: user.id },
-    orderBy: [{ archived: "asc" }, { name: "asc" }],
-    include: { lessons: { select: { id: true, date: true, startTime: true, status: true, subject: true } } },
+    orderBy: [{ archived: "asc" }, { isGroup: "asc" }, { name: "asc" }],
+    include: {
+      lessons: { select: { id: true, date: true, startTime: true, status: true, subject: true } },
+      members: { select: { id: true, name: true, color: true } },
+      groups: { select: { id: true, name: true, color: true } },
+    },
   });
   return students.map(({ lessons, ...s }) => ({
     ...s,
@@ -18,6 +23,8 @@ export const GET = route(async ({ user }) => {
 });
 
 export const POST = route(async ({ req, user }) => {
-  const d = await body(req, studentSchema);
-  return prisma.student.create({ data: { ...d, userId: user.id } });
+  const { memberIds, ...d } = await body(req, studentSchema);
+  const members = d.isGroup ? await checkMembers(user.id, memberIds ?? []) : [];
+  assertGroupSize(d.isGroup, members.length);
+  return prisma.student.create({ data: { ...d, userId: user.id, ...(d.isGroup ? { members: { connect: members } } : {}) } });
 });

@@ -166,12 +166,16 @@ model Student {
   notes     String?
   color     String   @default("#8fb3e8")
   archived  Boolean  @default(false)
+  // Un « groupe » est une fiche qui rassemble plusieurs élèves (cours collectif)
+  isGroup   Boolean  @default(false)
   isDemo    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessons   Lesson[]
   resources Resource[]
+  members   Student[]  @relation("GroupMembers")
+  groups    Student[]  @relation("GroupMembers")
 }
 
 enum LessonStatus {

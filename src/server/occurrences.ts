@@ -36,9 +36,12 @@ export type Occurrence = {
   mediaItemId: string | null;
   isRecurring: boolean;
   isDemo: boolean;
+  /** Couleur propre à l'activité (ex. couleur de l'élève pour une séance), sinon celle de la catégorie */
+  color: string;
+  studentName: string | null;
 };
 
-type Full = Activity & { category: Category; exceptions: ActivityException[] };
+type Full = Activity & { category: Category; exceptions: ActivityException[]; lesson?: { student: { color: string; name: string } } | null };
 
 function toOcc(a: Full, originalDate: DateStr, ex?: ActivityException): Occurrence {
   const recurring = a.recurrence !== "NONE";
@@ -77,6 +80,8 @@ function toOcc(a: Full, originalDate: DateStr, ex?: ActivityException): Occurren
     mediaItemId: a.mediaItemId,
     isRecurring: recurring,
     isDemo: a.isDemo,
+    color: a.lesson?.student.color ?? a.category.color,
+    studentName: a.lesson?.student.name ?? null,
   };
 }
 
@@ -91,7 +96,7 @@ export async function getOccurrences(userId: string, from: DateStr, to: DateStr)
         { recurrence: { not: "NONE" }, exceptions: { some: { newDate: { gte: from, lte: to } } } },
       ],
     },
-    include: { category: true, exceptions: true },
+    include: { category: true, exceptions: true, lesson: { select: { student: { select: { color: true, name: true } } } } },
   });
 
   const out: Occurrence[] = [];

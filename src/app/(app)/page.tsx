@@ -271,7 +271,7 @@ export default function DashboardPage() {
               <ul className="space-y-2">
                 {d.next.map((o) => (
                   <li key={o.key} className="flex items-center gap-3">
-                    <span className="h-8 w-1 rounded-full" style={{ background: o.category.color }} />
+                    <span className="h-8 w-1 rounded-full" style={{ background: o.color }} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm text-ink">{o.title}</div>
                       <div className="text-xs text-muted">

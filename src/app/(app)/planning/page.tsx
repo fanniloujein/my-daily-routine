@@ -8,6 +8,7 @@ import { useActivityEditor } from "@/components/activity/ActivityEditorContext";
 import { draftFromOccurrence } from "@/components/activity/ActivityForm";
 import { PlanDialog } from "@/components/PlanDialog";
 import { BulkBar, SelectBox } from "@/components/activity/BulkBar";
+import { textOn } from "@/components/NameTag";
 import { ApiError, api, cx, fmtDateLong, refreshAll } from "@/lib/client";
 import { useCategories, useOccurrences, type Occurrence } from "@/lib/hooks";
 import { addDays, addMonths, endOfMonth, formatTime, minToTime, rangeDays, startOfMonth, startOfWeek, timeToMin, today } from "@/lib/dates";
@@ -125,6 +126,11 @@ export default function PlanningPage() {
   );
 }
 
+/** Séances de cours : couleur pleine de l'élève ; autres activités : teinte légère de la catégorie. */
+function tone(o: Occurrence, alpha: string) {
+  return o.studentName ? { background: o.color, color: textOn(o.color), borderLeftColor: o.color } : { background: `${o.color}${alpha}`, borderLeftColor: o.color };
+}
+
 const HOUR_PX = 56;
 const START_H = 6;
 const END_H = 24;
@@ -215,12 +221,11 @@ function DayView({ date, items }: { date: string; items: Occurrence[] }) {
                     height: Math.max(22, ((e - s) / 60) * HOUR_PX - 2),
                     left: `calc(3rem + ${width} * ${p.col})`,
                     width: `calc(${width} - 4px)`,
-                    background: `${o.category.color}24`,
-                    borderLeftColor: o.category.color,
+                    ...tone(o, "24"),
                   }}
                 >
-                  <div className={cx("truncate font-medium text-ink", o.status === "DONE" && "line-through")}>{o.title}</div>
-                  <div className="truncate text-[10px] text-ink-2">
+                  <div className={cx("truncate font-medium", !o.studentName && "text-ink", o.status === "DONE" && "line-through")}>{o.title}</div>
+                  <div className={cx("truncate text-[10px]", o.studentName ? "opacity-90" : "text-ink-2")}>
                     {formatTime(o.startTime)} – {formatTime(o.endTime)} {o.isFixed ? "· fixe" : ""}
                   </div>
                 </button>
@@ -291,11 +296,11 @@ function WeekView({ from, items, onPickDay }: { from: string; items: Occurrence[
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("text/plain", o.key)}
                   className={cx("cursor-grab rounded-lg border-l-[3px] px-1.5 py-1 text-[11px] active:cursor-grabbing", o.status === "DONE" && "opacity-50 line-through")}
-                  style={{ background: `${o.category.color}1f`, borderLeftColor: o.category.color }}
+                  style={tone(o, "1f")}
                   title={o.title}
                 >
-                  <div className="truncate font-medium text-ink">{o.title}</div>
-                  <div className="text-[10px] text-ink-2">{o.startTime ? formatTime(o.startTime) : "sans horaire"}</div>
+                  <div className={cx("truncate font-medium", !o.studentName && "text-ink")}>{o.title}</div>
+                  <div className={cx("text-[10px]", o.studentName ? "opacity-90" : "text-ink-2")}>{o.startTime ? formatTime(o.startTime) : "sans horaire"}</div>
                 </div>
               ))}
             </div>
@@ -331,7 +336,7 @@ function MonthView({ cursor, from, to, items, onPickDay }: { cursor: string; fro
               <span className={cx("inline-flex h-6 w-6 items-center justify-center rounded-full text-xs", d === t ? "bg-primary text-white dark:text-[#0e1322]" : "text-ink-2")}>{Number(d.slice(8))}</span>
               <div className="mt-0.5 hidden space-y-0.5 sm:block">
                 {list.slice(0, 3).map((o) => (
-                  <div key={o.key} className="truncate rounded px-1 text-[10px] text-ink" style={{ background: `${o.category.color}22` }}>
+                  <div key={o.key} className={cx("truncate rounded px-1 text-[10px]", !o.studentName && "text-ink")} style={tone(o, "22")}>
                     {o.startTime ? `${formatTime(o.startTime)} ` : ""}
                     {o.title}
                   </div>
@@ -340,7 +345,7 @@ function MonthView({ cursor, from, to, items, onPickDay }: { cursor: string; fro
               </div>
               <div className="mt-1 flex flex-wrap gap-0.5 sm:hidden">
                 {list.slice(0, 4).map((o) => (
-                  <span key={o.key} className="h-1.5 w-1.5 rounded-full" style={{ background: o.category.color }} />
+                  <span key={o.key} className="h-1.5 w-1.5 rounded-full" style={{ background: o.color }} />
                 ))}
               </div>
             </button>

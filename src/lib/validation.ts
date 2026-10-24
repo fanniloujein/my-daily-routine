@@ -69,6 +69,8 @@ export const studentSchema = z.object({
   notes: optText,
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#8fb3e8"),
   archived: z.boolean().default(false),
+  isGroup: z.boolean().default(false),
+  memberIds: z.array(z.string()).max(50).optional(),
 });
 
 export const lessonSchema = z

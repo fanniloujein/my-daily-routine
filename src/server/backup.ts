@@ -13,7 +13,7 @@ export async function exportData(userId: string, includeHealth: boolean) {
       prisma.category.findMany({ where: { userId } }),
       prisma.activity.findMany({ where: { userId }, include: { exceptions: true } }),
       prisma.energyCheckin.findMany({ where: { userId } }),
-      prisma.student.findMany({ where: { userId }, include: { resources: true } }),
+      prisma.student.findMany({ where: { userId }, include: { resources: true, members: { select: { id: true } } } }),
       prisma.lesson.findMany({ where: { userId }, include: { prepItems: true, resources: true } }),
       prisma.project.findMany({ where: { userId }, include: { tasks: true, events: true } }),
       prisma.germanSession.findMany({ where: { userId } }),
@@ -110,7 +110,11 @@ export async function importData(userId: string, raw: unknown) {
 
       if (b.user?.settings) await tx.user.update({ where: { id: userId }, data: { settings: b.user.settings } });
       await tx.category.createMany({ data: b.categories.map((c: Row) => withUser(strip(c, "userId"))) as never });
-      await tx.student.createMany({ data: b.students.map((s: Row) => withUser(strip(s, "userId", "resources"))) as never });
+      await tx.student.createMany({ data: b.students.map((s: Row) => withUser(strip(s, "userId", "resources", "members", "groups"))) as never });
+      for (const s of b.students as Row[]) {
+        const members = ((s.members as Row[]) ?? []).map((m) => ({ id: String(m.id) }));
+        if (members.length) await tx.student.update({ where: { id: String(s.id) }, data: { members: { connect: members } } });
+      }
       await tx.resource.createMany({ data: b.students.flatMap((s: Row) => (s.resources as Row[]) ?? []) as never });
       await tx.lesson.createMany({ data: b.lessons.map((l: Row) => withUser(strip(l, "userId", "prepItems", "resources"))) as never });
       await tx.prepItem.createMany({ data: b.lessons.flatMap((l: Row) => (l.prepItems as Row[]) ?? []) as never });

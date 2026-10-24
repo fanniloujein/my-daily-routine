@@ -24,6 +24,10 @@ export async function loadDemo(userId: string) {
   });
   await createLesson(userId, { studentId: lina.id, date: addDays(t, 1), startTime: "16:00", endTime: "17:00", subject: "Mathématiques", chapter: "Théorème de Pythagore", prepMinutes: 45, prepDate: t, isDemo: true });
   await createLesson(userId, { studentId: yanis.id, date: addDays(t, 3), startTime: "17:30", endTime: "19:00", subject: "Physique", chapter: "Lois de Newton", prepMinutes: 60, prepDate: null, isDemo: true });
+  const groupe = await prisma.student.create({
+    data: { userId, name: "Groupe révisions (démo)", isGroup: true, subjects: "Mathématiques", goals: "Révisions communes avant les contrôles", color: "#4fb3a9", isDemo: true, members: { connect: [{ id: lina.id }, { id: yanis.id }] } },
+  });
+  await createLesson(userId, { studentId: groupe.id, date: addDays(t, 5), startTime: "14:00", endTime: "15:30", subject: "Mathématiques", chapter: "Fonctions", prepMinutes: 60, prepDate: null, isDemo: true });
   const past = await prisma.lesson.create({
     data: {
       userId, studentId: lina.id, date: addDays(t, -4), startTime: "16:00", endTime: "17:00", subject: "Mathématiques", chapter: "Fractions", status: "DONE",

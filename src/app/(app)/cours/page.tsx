@@ -5,14 +5,30 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, CalendarPlus, Check, ClipboardCheck, ExternalLink, FileText, GraduationCap, Link2, ListChecks, Pencil, Plus, Trash2, UserPlus, Users } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Loading, Modal, Notice, PageHeader, Progress, Segmented, useUi } from "@/components/ui";
 import { ApiError, api, cx, fmtDateLong, fmtDayNum, refreshAll, relativeDay, useApi } from "@/lib/client";
-import { addDays, addMinutesToTime, formatDuration, formatTime, timeToMin, today } from "@/lib/dates";
+import { addDays, addMinutesToTime, formatDuration, formatTime, startOfWeek, timeToMin, today } from "@/lib/dates";
 import { COLOR_PALETTE } from "@/lib/constants";
 import type { Readiness } from "@/server/lessons";
+import { NameTag, textOn } from "@/components/NameTag";
 
 type DetailTab = "prep" | "after" | "edit";
 type PrepItem = { id: string; label: string; done: boolean; order: number };
 type Resource = { id: string; type: string; title: string; url: string | null; content: string | null };
-type Student = { id: string; name: string; level: string | null; subjects: string | null; goals: string | null; notes: string | null; color: string; archived: boolean; lessonsDone: number; nextLesson: { date: string; startTime: string; subject: string } | null };
+type Person = { id: string; name: string; color: string };
+type Student = {
+  id: string;
+  name: string;
+  level: string | null;
+  subjects: string | null;
+  goals: string | null;
+  notes: string | null;
+  color: string;
+  archived: boolean;
+  isGroup: boolean;
+  members: Person[];
+  groups: Person[];
+  lessonsDone: number;
+  nextLesson: { date: string; startTime: string; subject: string } | null;
+};
 type Lesson = {
   id: string;
   studentId: string;
@@ -25,7 +41,7 @@ type Lesson = {
   prepMinutes: number;
   remarks: string | null;
   nextSteps: string | null;
-  student: { id: string; name: string; color: string; level: string | null };
+  student: { id: string; name: string; color: string; level: string | null; isGroup?: boolean; members?: Person[] };
   prepItems: PrepItem[];
   resources: Resource[];
   activities: { id: string; lessonRole: string | null; date: string; startTime: string | null; status: string }[];
@@ -46,6 +62,8 @@ function Cours() {
   const params = useSearchParams();
   const router = useRouter();
   const [tab, setTab] = useState<"upcoming" | "students" | "past">("upcoming");
+  const [view, setView] = useState<"table" | "week">("table");
+  const [filter, setFilter] = useState<string>("all");
   const [lessonForm, setLessonForm] = useState<{ studentId?: string } | null>(null);
   const [studentForm, setStudentForm] = useState<Partial<Student> | null>(null);
   const [lesson, setLesson] = useState<{ id: string; tab?: DetailTab } | null>(null);
@@ -62,24 +80,32 @@ function Cours() {
   const students = useApi<Student[]>("/api/students");
   const t = today();
 
-  const activeStudents = (students.data ?? []).filter((s) => !s.archived);
+  const all = students.data ?? [];
+  const activeStudents = all.filter((s) => !s.archived && !s.isGroup);
+  const groups = all.filter((s) => s.isGroup);
   const toComplete = (past.data ?? []).filter((l) => l.status === "PLANNED");
   const next = upcoming.data?.[0];
-  const weekEnd = addDays(t, 6);
-  const thisWeek = (upcoming.data ?? []).filter((l) => l.date <= weekEnd);
-  const later = (upcoming.data ?? []).filter((l) => l.date > weekEnd);
   const loading = !students.data || !upcoming.data;
   const step = activeStudents.length === 0 ? 1 : (upcoming.data?.length ?? 0) === 0 ? 2 : 3;
+  // Filtre : un élève voit aussi les séances des groupes dont il fait partie
+  const matches = (l: Lesson) =>
+    filter === "all" || l.studentId === filter || (l.student.members ?? []).some((m) => m.id === filter);
+  const upcomingFiltered = (upcoming.data ?? []).filter(matches);
+  const pastFiltered = (past.data ?? []).filter(matches);
+  const filterable = all.filter((s) => !s.archived);
 
   return (
     <div>
       <PageHeader
         title="Mes cours particuliers"
-        subtitle="Ajoute tes élèves, planifie tes séances : l'application réserve le temps de préparation pour toi."
+        subtitle="Ajoute tes élèves et tes groupes, planifie tes séances : l'application réserve le temps de préparation pour toi."
         actions={
           <>
             <Button variant="secondary" onClick={() => setStudentForm({})}>
-              <UserPlus className="h-4 w-4" /> Ajouter un élève
+              <UserPlus className="h-4 w-4" /> Élève
+            </Button>
+            <Button variant="secondary" onClick={() => setStudentForm({ isGroup: true })}>
+              <Users className="h-4 w-4" /> Groupe
             </Button>
             <Button onClick={() => setLessonForm({})}>
               <CalendarPlus className="h-4 w-4" /> Planifier une séance
@@ -100,9 +126,9 @@ function Cours() {
               <ul className="space-y-2">
                 {toComplete.slice(0, 5).map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-surface-2/60 p-3">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: l.student.color }} />
+                    <NameTag name={l.student.name} color={l.student.color} group={l.student.isGroup} />
                     <span className="min-w-0 flex-1 text-sm text-ink">
-                      <strong>{l.student.name}</strong> · {l.subject} · <span className="first-letter:uppercase">{relativeDay(l.date, t)}</span> {formatTime(l.startTime)}
+                      {l.subject} · <span className="inline-block first-letter:uppercase">{relativeDay(l.date, t)}</span> {formatTime(l.startTime)}
                     </span>
                     <Button size="sm" variant="success" onClick={() => setLesson({ id: l.id, tab: "after" })}>
                       <Check className="h-3.5 w-3.5" /> Elle a eu lieu
@@ -120,105 +146,117 @@ function Cours() {
             onChange={setTab}
             options={[
               { value: "upcoming", label: `À venir (${upcoming.data!.length})` },
-              { value: "students", label: `Mes élèves (${activeStudents.length})` },
+              { value: "students", label: `Élèves et groupes (${activeStudents.length + groups.length})` },
               { value: "past", label: "Historique" },
             ]}
           />
+
+          {tab !== "students" && filterable.length > 1 && (
+            <div className="mb-4 flex flex-wrap items-center gap-1.5">
+              <span className="mr-1 text-xs text-muted">Afficher :</span>
+              <button onClick={() => setFilter("all")} className={cx("rounded-full border px-3 py-1 text-xs font-medium", filter === "all" ? "border-ink bg-ink text-bg" : "border-line text-ink-2")}>
+                Tous
+              </button>
+              {filterable.map((s) => (
+                <button key={s.id} onClick={() => setFilter(filter === s.id ? "all" : s.id)} className={cx("rounded-full transition", filter !== "all" && filter !== s.id && "opacity-40")}>
+                  <NameTag name={s.name} color={s.color} group={s.isGroup} />
+                </button>
+              ))}
+            </div>
+          )}
 
           {tab === "upcoming" &&
             (upcoming.error ? (
               <ErrorBox error={upcoming.error} />
             ) : !next ? (
-              <Empty icon={<GraduationCap className="h-8 w-8" />} title="Aucune séance à venir" action={activeStudents.length ? <Button size="sm" onClick={() => setLessonForm({})}>Planifier une séance</Button> : <Button size="sm" onClick={() => setStudentForm({})}>Ajouter un élève</Button>} />
+              <Empty
+                icon={<GraduationCap className="h-8 w-8" />}
+                title="Aucune séance à venir"
+                action={activeStudents.length ? <Button size="sm" onClick={() => setLessonForm({})}>Planifier une séance</Button> : <Button size="sm" onClick={() => setStudentForm({})}>Ajouter un élève</Button>}
+              />
             ) : (
               <div className="space-y-5">
-                <NextLesson l={next} onPrepare={() => setLesson({ id: next.id, tab: "prep" })} onOpen={() => setLesson({ id: next.id })} />
-                {thisWeek.length > 1 && (
-                  <LessonList title="Cette semaine" lessons={thisWeek.slice(1)} onOpen={(id) => setLesson({ id })} />
-                )}
-                {later.length > 0 && <LessonList title="Plus tard" lessons={thisWeek.length === 0 ? later.slice(1) : later} onOpen={(id) => setLesson({ id })} />}
+                {filter === "all" && <NextLesson l={next} onPrepare={() => setLesson({ id: next.id, tab: "prep" })} onOpen={() => setLesson({ id: next.id })} />}
+                <Card
+                  title="Mes séances"
+                  action={
+                    <Segmented
+                      value={view}
+                      onChange={setView}
+                      options={[
+                        { value: "table", label: "Tableau" },
+                        { value: "week", label: "Semaine" },
+                      ]}
+                    />
+                  }
+                >
+                  {upcomingFiltered.length === 0 ? (
+                    <Empty title="Aucune séance à venir pour ce filtre" />
+                  ) : view === "table" ? (
+                    <LessonTable lessons={upcomingFiltered} onOpen={(id, tb) => setLesson({ id, tab: tb })} />
+                  ) : (
+                    <WeekGrid lessons={upcomingFiltered} onOpen={(id) => setLesson({ id })} />
+                  )}
+                </Card>
               </div>
             ))}
 
-          {tab === "students" &&
-            (activeStudents.length === 0 && !(students.data ?? []).length ? (
-              <Empty icon={<Users className="h-8 w-8" />} title="Aucun élève pour l'instant" action={<Button size="sm" onClick={() => setStudentForm({})}>Ajouter un élève</Button>}>
-                Il suffit d&apos;un prénom. Le niveau et les matières sont facultatifs.
-              </Empty>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(students.data ?? []).map((s) => (
-                  <div key={s.id} className={cx("card flex flex-col p-4", s.archived && "opacity-60")}>
-                    <button onClick={() => setStudentId(s.id)} className="flex items-center gap-3 text-left">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl font-display text-lg font-semibold text-white" style={{ background: s.color }}>
-                        {s.name.charAt(0).toUpperCase()}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-ink">{s.name}</div>
-                        <div className="truncate text-xs text-muted">
-                          {[s.level, s.subjects].filter(Boolean).join(" · ") || "Niveau et matières non précisés"}
-                        </div>
-                      </div>
-                    </button>
-                    {s.goals && <p className="mt-3 line-clamp-2 text-xs text-ink-2">🎯 {s.goals}</p>}
-                    <p className="mt-3 text-xs text-muted">
-                      {s.nextLesson ? (
-                        <>
-                          Prochaine séance : <span className="font-medium text-ink-2">{relativeDay(s.nextLesson.date, t)} à {formatTime(s.nextLesson.startTime)}</span>
-                        </>
-                      ) : (
-                        "Aucune séance prévue"
-                      )}{" "}
-                      · {s.lessonsDone} réalisée(s)
-                    </p>
-                    {!s.archived && (
-                      <div className="mt-3 flex gap-2">
-                        <Button size="sm" onClick={() => setLessonForm({ studentId: s.id })}>
-                          <CalendarPlus className="h-3.5 w-3.5" /> Planifier
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => setStudentId(s.id)}>
-                          Voir la fiche
-                        </Button>
-                      </div>
-                    )}
+          {tab === "students" && (
+            <div className="space-y-6">
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="section-title">Mes élèves ({activeStudents.length})</h2>
+                  <Button size="sm" variant="secondary" onClick={() => setStudentForm({})}>
+                    <UserPlus className="h-3.5 w-3.5" /> Ajouter un élève
+                  </Button>
+                </div>
+                {all.filter((s) => !s.isGroup).length === 0 ? (
+                  <Empty icon={<Users className="h-8 w-8" />} title="Aucun élève pour l'instant">
+                    Il suffit d&apos;un prénom. Le niveau et les matières sont facultatifs.
+                  </Empty>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {all.filter((s) => !s.isGroup).map((s) => (
+                      <PersonCard key={s.id} s={s} onOpen={() => setStudentId(s.id)} onPlan={() => setLessonForm({ studentId: s.id })} />
+                    ))}
                   </div>
-                ))}
-              </div>
-            ))}
+                )}
+              </section>
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="section-title">Mes groupes ({groups.length})</h2>
+                  <Button size="sm" variant="secondary" onClick={() => setStudentForm({ isGroup: true })} disabled={activeStudents.length < 2} title={activeStudents.length < 2 ? "Ajoute d'abord au moins 2 élèves" : undefined}>
+                    <Users className="h-3.5 w-3.5" /> Créer un groupe
+                  </Button>
+                </div>
+                {groups.length === 0 ? (
+                  <Empty icon={<Users className="h-8 w-8" />} title="Aucun groupe">
+                    Un groupe réunit plusieurs élèves pour un cours collectif (ex. « Groupe Brevet » avec Lina et Sarah). {activeStudents.length < 2 ? "Ajoute d'abord au moins 2 élèves." : ""}
+                  </Empty>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {groups.map((s) => (
+                      <PersonCard key={s.id} s={s} onOpen={() => setStudentId(s.id)} onPlan={() => setLessonForm({ studentId: s.id })} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
 
           {tab === "past" &&
-            ((past.data ?? []).length === 0 ? (
+            (pastFiltered.length === 0 ? (
               <Empty title="Aucune séance passée pour l'instant" />
             ) : (
-              <Card>
-                <ul className="divide-y divide-line/60">
-                  {past.data!.map((l) => (
-                    <li key={l.id}>
-                      <button onClick={() => setLesson({ id: l.id, tab: "after" })} className="flex w-full items-center justify-between gap-3 py-3 text-left">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-ink">
-                            {l.student.name} — {l.subject}
-                            {l.chapter ? ` · ${l.chapter}` : ""}
-                          </div>
-                          <div className="truncate text-xs text-muted">{l.remarks ? `💬 ${l.remarks}` : "Pas encore de remarque"}</div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-xs text-muted">{fmtDayNum(l.date)}</span>
-                          <Badge tone={l.status === "DONE" ? "success" : l.status === "CANCELLED" ? "neutral" : "warning"}>
-                            {l.status === "DONE" ? "Réalisée" : l.status === "CANCELLED" ? "Annulée" : "À compléter"}
-                          </Badge>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+              <Card title="Séances passées">
+                <LessonTable lessons={pastFiltered} past onOpen={(id) => setLesson({ id, tab: "after" })} />
               </Card>
             ))}
         </>
       )}
 
-      {lessonForm && <LessonForm open studentId={lessonForm.studentId} students={students.data ?? []} onClose={() => setLessonForm(null)} />}
-      {studentForm && <StudentForm open initial={studentForm} onClose={() => setStudentForm(null)} />}
+      {lessonForm && <LessonForm open studentId={lessonForm.studentId} students={all} onClose={() => setLessonForm(null)} />}
+      {studentForm && <StudentForm open initial={studentForm} students={all} onClose={() => setStudentForm(null)} />}
       {lesson && <LessonDetail id={lesson.id} initialTab={lesson.tab} onClose={() => setLesson(null)} />}
       {studentId && (
         <StudentDetail
@@ -229,6 +267,192 @@ function Cours() {
           onOpenLesson={(id) => { setStudentId(null); setLesson({ id }); }}
         />
       )}
+    </div>
+  );
+}
+
+function PersonCard({ s, onOpen, onPlan }: { s: Student; onOpen: () => void; onPlan: () => void }) {
+  const t = today();
+  return (
+    <div className={cx("card flex flex-col overflow-hidden", s.archived && "opacity-60")}>
+      <div className="h-1.5" style={{ background: s.color }} />
+      <div className="flex flex-1 flex-col p-4">
+        <button onClick={onOpen} className="text-left">
+          <NameTag name={s.name} color={s.color} group={s.isGroup} size="lg" />
+          <div className="mt-2 text-xs text-muted">{[s.level, s.subjects].filter(Boolean).join(" · ") || (s.isGroup ? "Cours collectif" : "Niveau et matières non précisés")}</div>
+        </button>
+        {s.isGroup && s.members.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {s.members.map((m) => (
+              <NameTag key={m.id} name={m.name} color={m.color} size="sm" />
+            ))}
+          </div>
+        )}
+        {!s.isGroup && s.groups.length > 0 && <p className="mt-2 text-xs text-ink-2">Groupe : {s.groups.map((g) => g.name).join(", ")}</p>}
+        {s.goals && <p className="mt-2 line-clamp-2 text-xs text-ink-2">🎯 {s.goals}</p>}
+        <p className="mt-3 text-xs text-muted">
+          {s.nextLesson ? (
+            <>
+              Prochaine séance : <span className="font-medium text-ink-2">{relativeDay(s.nextLesson.date, t)} à {formatTime(s.nextLesson.startTime)}</span>
+            </>
+          ) : (
+            "Aucune séance prévue"
+          )}{" "}
+          · {s.lessonsDone} réalisée(s)
+        </p>
+        {!s.archived && (
+          <div className="mt-auto flex gap-2 pt-3">
+            <Button size="sm" onClick={onPlan}>
+              <CalendarPlus className="h-3.5 w-3.5" /> Planifier
+            </Button>
+            <Button size="sm" variant="secondary" onClick={onOpen}>
+              Voir la fiche
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Tableau des séances (ordinateur) ; liste compacte sur téléphone. */
+function LessonTable({ lessons, onOpen, past }: { lessons: Lesson[]; onOpen: (id: string, tab?: DetailTab) => void; past?: boolean }) {
+  const t = today();
+  const [all, setAll] = useState(false);
+  const shown = all ? lessons : lessons.slice(0, 15);
+  const status = (l: Lesson) => {
+    if (past) return l.status === "DONE" ? { tone: "success" as const, text: "Réalisée" } : l.status === "CANCELLED" ? { tone: "neutral" as const, text: "Annulée" } : { tone: "warning" as const, text: "À compléter" };
+    return prepSentence(l);
+  };
+  return (
+    <div>
+      <div className="hidden overflow-x-auto sm:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+              <th className="py-2 pr-3 font-medium">Date</th>
+              <th className="py-2 pr-3 font-medium">Heure</th>
+              <th className="py-2 pr-3 font-medium">Élève / groupe</th>
+              <th className="py-2 pr-3 font-medium">Matière</th>
+              <th className="py-2 pr-3 font-medium">{past ? "Statut" : "Préparation"}</th>
+              <th className="py-2 font-medium">{past ? "Remarque" : ""}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((l) => {
+              const st = status(l);
+              return (
+                <tr key={l.id} onClick={() => onOpen(l.id)} className="cursor-pointer border-b border-line/50 transition last:border-0 hover:bg-surface-2/60">
+                  <td className="whitespace-nowrap py-2.5 pr-3 font-medium text-ink">
+                    <span className="inline-block first-letter:uppercase">{relativeDay(l.date, t)}</span>
+                    <div className="text-[11px] font-normal text-muted">{fmtDayNum(l.date)}</div>
+                  </td>
+                  <td className="whitespace-nowrap py-2.5 pr-3 text-ink-2">
+                    {formatTime(l.startTime)} – {formatTime(l.endTime)}
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <NameTag name={l.student.name} color={l.student.color} group={l.student.isGroup} />
+                  </td>
+                  <td className="py-2.5 pr-3 text-ink">
+                    {l.subject}
+                    {l.chapter && <div className="text-[11px] text-muted">{l.chapter}</div>}
+                  </td>
+                  <td className="py-2.5 pr-3">
+                    <Badge tone={st.tone}>{st.text}</Badge>
+                  </td>
+                  <td className="max-w-[16rem] py-2.5 text-right">
+                    {past ? (
+                      <span className="line-clamp-1 text-left text-xs text-muted">{l.remarks ?? "—"}</span>
+                    ) : l.readiness.state !== "ready" && l.prepItems.length > 0 ? (
+                      <Button size="sm" variant="soft" onClick={(e) => { e.stopPropagation(); onOpen(l.id, "prep"); }}>
+                        <ListChecks className="h-3.5 w-3.5" /> Préparer
+                      </Button>
+                    ) : null}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <ul className="divide-y divide-line/60 sm:hidden">
+        {shown.map((l) => {
+          const st = status(l);
+          return (
+            <li key={l.id}>
+              <button onClick={() => onOpen(l.id)} className="flex w-full items-start gap-3 py-3 text-left">
+                <div className="w-20 shrink-0 text-sm">
+                  <div className="font-medium text-ink first-letter:uppercase">{relativeDay(l.date, t)}</div>
+                  <div className="text-xs text-muted">{formatTime(l.startTime)}</div>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <NameTag name={l.student.name} color={l.student.color} group={l.student.isGroup} size="sm" />
+                  <div className="truncate text-xs text-ink-2">
+                    {l.subject}
+                    {l.chapter ? ` · ${l.chapter}` : ""}
+                  </div>
+                  <Badge tone={st.tone}>{st.text}</Badge>
+                </div>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {lessons.length > 15 && (
+        <div className="mt-2 text-center">
+          <button className="text-xs font-medium text-primary-strong" onClick={() => setAll(!all)}>
+            {all ? "Réduire" : `Voir les ${lessons.length} séances`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Emploi du temps de la semaine : une colonne par jour, chaque séance dans la couleur de l'élève. */
+function WeekGrid({ lessons, onOpen }: { lessons: Lesson[]; onOpen: (id: string) => void }) {
+  const [ws, setWs] = useState(startOfWeek(today()));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(ws, i));
+  const t = today();
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <Button size="sm" variant="ghost" onClick={() => setWs(addDays(ws, -7))}>
+          ← Semaine précédente
+        </Button>
+        <span className="text-sm font-medium text-ink">
+          Du {fmtDayNum(ws)} au {fmtDayNum(addDays(ws, 6))}
+        </span>
+        <Button size="sm" variant="ghost" onClick={() => setWs(addDays(ws, 7))}>
+          Semaine suivante →
+        </Button>
+      </div>
+      <div className="grid gap-2 md:grid-cols-7">
+        {days.map((d) => {
+          const list = lessons.filter((l) => l.date === d);
+          return (
+            <div key={d} className={cx("min-h-[6rem] rounded-xl border border-line/70 p-2", d === t && "ring-2 ring-primary/40")}>
+              <div className="mb-2 text-xs font-semibold text-ink first-letter:uppercase">{new Date(d + "T12:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric" })}</div>
+              <div className="space-y-1.5">
+                {list.length === 0 && <p className="text-[11px] text-muted">—</p>}
+                {list.map((l) => (
+                  <button
+                    key={l.id}
+                    onClick={() => onOpen(l.id)}
+                    className="block w-full rounded-lg px-2 py-1.5 text-left text-[11px] shadow-sm transition hover:brightness-95"
+                    style={{ background: l.student.color, color: textOn(l.student.color) }}
+                  >
+                    <div className="font-semibold">
+                      {formatTime(l.startTime)} · {l.student.name}
+                    </div>
+                    <div className="truncate opacity-90">{l.subject}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -281,13 +505,16 @@ function NextLesson({ l, onPrepare, onOpen }: { l: Lesson; onPrepare: () => void
   return (
     <div className="card overflow-hidden">
       <div className="flex flex-wrap items-center gap-4 p-4 sm:p-5">
-        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-2xl font-semibold text-white" style={{ background: l.student.color }}>
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl font-display text-2xl font-semibold" style={{ background: l.student.color, color: textOn(l.student.color) }}>
           {l.student.name.charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
           <div className="text-xs font-medium uppercase tracking-wide text-muted">Prochaine séance</div>
           <div className="font-display text-xl font-semibold text-ink">
-            <span className="first-letter:uppercase inline-block">{relativeDay(l.date, today())}</span> à {formatTime(l.startTime)} — {l.student.name}
+            <span className="first-letter:uppercase inline-block">{relativeDay(l.date, today())}</span> à {formatTime(l.startTime)}
+          </div>
+          <div className="my-1">
+            <NameTag name={l.student.name} color={l.student.color} group={l.student.isGroup} size="lg" />
           </div>
           <div className="text-sm text-ink-2">
             {l.subject}
@@ -320,49 +547,6 @@ function NextLesson({ l, onPrepare, onOpen }: { l: Lesson; onPrepare: () => void
         {l.readiness.state === "at_risk" && <p className="mt-2 text-xs text-warning">⚠ {l.readiness.message}</p>}
       </div>
     </div>
-  );
-}
-
-function LessonList({ title, lessons, onOpen }: { title: string; lessons: Lesson[]; onOpen: (id: string) => void }) {
-  const t = today();
-  const [all, setAll] = useState(false);
-  const shown = all ? lessons : lessons.slice(0, 5);
-  return (
-    <Card
-      title={`${title} (${lessons.length})`}
-      action={
-        lessons.length > 5 ? (
-          <button className="text-xs font-medium text-primary-strong" onClick={() => setAll(!all)}>
-            {all ? "Réduire" : "Voir tout"}
-          </button>
-        ) : undefined
-      }
-    >
-      <ul className="divide-y divide-line/60">
-        {shown.map((l) => {
-          const p = prepSentence(l);
-          return (
-            <li key={l.id}>
-              <button onClick={() => onOpen(l.id)} className="flex w-full flex-wrap items-center gap-3 py-3 text-left">
-                <div className="w-24 shrink-0 text-sm">
-                  <div className="font-medium text-ink first-letter:uppercase">{relativeDay(l.date, t)}</div>
-                  <div className="text-xs text-muted">{formatTime(l.startTime)}</div>
-                </div>
-                <span className="h-8 w-1 rounded-full" style={{ background: l.student.color }} />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-ink">{l.student.name}</div>
-                  <div className="truncate text-xs text-muted">
-                    {l.subject}
-                    {l.chapter ? ` · ${l.chapter}` : ""}
-                  </div>
-                </div>
-                <Badge tone={p.tone}>{p.text}</Badge>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
   );
 }
 
@@ -444,7 +628,7 @@ function LessonForm({ open, onClose, students, studentId }: { open: boolean; onC
   }, [f.studentId, newStudent]);
 
   const quickDays = [0, 1, 2, 3, 4, 5, 6].map((n) => addDays(today(), n));
-  const who = newStudent ? ns.name.trim() || "ton nouvel élève" : student?.name ?? "—";
+  const who = newStudent ? ns.name.trim() || "ton nouvel élève" : student ? (student.isGroup ? `le groupe ${student.name}` : student.name) : "—";
 
   async function save(allowConflict = false) {
     setErr(null);
@@ -525,14 +709,22 @@ function LessonForm({ open, onClose, students, studentId }: { open: boolean; onC
       <div className="space-y-5">
         {err && <Notice tone="danger">{err}</Notice>}
 
-        <Section n={1} title="Avec quel élève ?">
+        <Section n={1} title="Avec quel élève ou quel groupe ?">
           <div className="flex flex-wrap gap-2">
-            {active.map((s) => (
-              <button key={s.id} type="button" onClick={() => { setNewStudent(false); setF({ ...f, studentId: s.id, subject: "" }); }} className={chip(!newStudent && f.studentId === s.id)}>
-                <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: s.color }} />
-                {s.name}
-              </button>
-            ))}
+            {active.map((s) => {
+              const on = !newStudent && f.studentId === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => { setNewStudent(false); setF({ ...f, studentId: s.id, subject: "" }); }}
+                  className={cx("rounded-full transition", on ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : "opacity-55 hover:opacity-90")}
+                  aria-pressed={on}
+                >
+                  <NameTag name={s.name} color={s.color} group={s.isGroup} size="lg" />
+                </button>
+              );
+            })}
             <button type="button" onClick={() => setNewStudent(true)} className={chip(newStudent)}>
               <Plus className="mr-1 inline h-3 w-3" /> Nouvel élève
             </button>
@@ -654,26 +846,33 @@ function LessonForm({ open, onClose, students, studentId }: { open: boolean; onC
   );
 }
 
-function StudentForm({ open, initial, onClose }: { open: boolean; initial: Partial<Student>; onClose: () => void }) {
+function StudentForm({ open, initial, students, onClose }: { open: boolean; initial: Partial<Student>; students: Student[]; onClose: () => void }) {
   const { toast } = useUi();
+  const isGroup = !!initial.isGroup;
+  const used = new Set(students.map((x) => x.color));
+  const freeColor = COLOR_PALETTE.find((c) => !used.has(c)) ?? COLOR_PALETTE[students.length % COLOR_PALETTE.length];
   const [f, setF] = useState({
     name: initial.name ?? "",
     level: initial.level ?? "",
     subjects: initial.subjects ?? "",
     goals: initial.goals ?? "",
     notes: initial.notes ?? "",
-    color: initial.color ?? COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)],
+    color: initial.color ?? freeColor,
     archived: initial.archived ?? false,
+    memberIds: (initial.members ?? []).map((m) => m.id),
   });
   const [saving, setSaving] = useState(false);
+  const candidates = students.filter((x) => !x.isGroup && !x.archived && x.id !== initial.id);
   async function save() {
-    if (!f.name.trim()) return toast("Le nom est obligatoire", "danger");
+    if (!f.name.trim()) return toast(isGroup ? "Donne un nom au groupe" : "Le prénom est obligatoire", "danger");
+    if (isGroup && f.memberIds.length < 2) return toast("Choisis au moins 2 élèves pour le groupe", "danger");
     setSaving(true);
     try {
-      if (initial.id) await api(`/api/students/${initial.id}`, { method: "PATCH", body: f });
-      else await api("/api/students", { body: f });
+      const body = { ...f, isGroup, level: f.level || null, subjects: f.subjects || null, goals: f.goals || null, notes: f.notes || null };
+      if (initial.id) await api(`/api/students/${initial.id}`, { method: "PATCH", body });
+      else await api("/api/students", { body });
       await refreshAll();
-      toast(initial.id ? "Élève modifié·e" : "Élève ajouté·e");
+      toast(initial.id ? "Modifications enregistrées" : isGroup ? "Groupe créé 👥" : "Élève ajouté");
       onClose();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Erreur", "danger");
@@ -682,33 +881,68 @@ function StudentForm({ open, initial, onClose }: { open: boolean; initial: Parti
     }
   }
   return (
-    <Modal open={open} onClose={onClose} title={initial.id ? "Modifier l'élève" : "Nouvel·le élève"} footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button onClick={save} loading={saving}>Enregistrer</Button></>}>
-      <div className="space-y-3">
-        <Field label="Prénom / nom">
-          <input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={initial.id ? (isGroup ? "Modifier le groupe" : "Modifier l'élève") : isGroup ? "Nouveau groupe" : "Nouvel élève"}
+      footer={<><Button variant="secondary" onClick={onClose}>Annuler</Button><Button onClick={save} loading={saving}>Enregistrer</Button></>}
+    >
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 rounded-2xl bg-surface-2/60 p-3">
+          <span className="text-xs text-muted">Aperçu :</span>
+          <NameTag name={f.name || (isGroup ? "Nom du groupe" : "Prénom")} color={f.color} group={isGroup} size="lg" />
+        </div>
+        <Field label={isGroup ? "Nom du groupe *" : "Prénom / nom *"}>
+          <input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder={isGroup ? "Groupe Brevet" : "Lina"} />
         </Field>
+        {isGroup && (
+          <div>
+            <span className="label">Élèves du groupe * (au moins 2)</span>
+            {candidates.length < 2 ? (
+              <Notice tone="warning">Ajoute d&apos;abord au moins 2 élèves, puis crée le groupe.</Notice>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {candidates.map((c) => {
+                  const on = f.memberIds.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setF({ ...f, memberIds: on ? f.memberIds.filter((x) => x !== c.id) : [...f.memberIds, c.id] })}
+                      className={cx("rounded-full transition", on ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : "opacity-50 hover:opacity-90")}
+                      aria-pressed={on}
+                    >
+                      <NameTag name={c.name} color={c.color} size="lg" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Niveau scolaire">
+          <Field label="Niveau (facultatif)">
             <input className="input" value={f.level} onChange={(e) => setF({ ...f, level: e.target.value })} placeholder="3e, Terminale…" />
           </Field>
-          <Field label="Matières">
+          <Field label="Matières (facultatif)">
             <input className="input" value={f.subjects} onChange={(e) => setF({ ...f, subjects: e.target.value })} placeholder="Maths, Physique" />
           </Field>
         </div>
-        <Field label="Objectifs">
-          <textarea className="input min-h-[60px]" value={f.goals} onChange={(e) => setF({ ...f, goals: e.target.value })} />
-        </Field>
-        <Field label="Notes">
-          <textarea className="input min-h-[60px]" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
-        </Field>
         <div>
-          <span className="label">Couleur</span>
-          <div className="flex flex-wrap gap-2">
+          <span className="label">Couleur {isGroup ? "du groupe" : "de l'élève"}</span>
+          <div className="flex flex-wrap items-center gap-2">
             {COLOR_PALETTE.map((c) => (
-              <button key={c} type="button" onClick={() => setF({ ...f, color: c })} className={cx("h-7 w-7 rounded-full ring-offset-2 ring-offset-surface", f.color === c && "ring-2 ring-ink")} style={{ background: c }} aria-label={c} />
+              <button key={c} type="button" onClick={() => setF({ ...f, color: c })} className={cx("h-8 w-8 rounded-full ring-offset-2 ring-offset-surface", f.color === c && "ring-2 ring-ink")} style={{ background: c }} aria-label={`Couleur ${c}`} />
             ))}
+            <input type="color" value={f.color} onChange={(e) => setF({ ...f, color: e.target.value })} className="h-8 w-10 cursor-pointer rounded border border-line bg-transparent" aria-label="Couleur personnalisée" />
           </div>
         </div>
+        <Field label="Objectifs (facultatif)">
+          <textarea className="input min-h-[60px]" value={f.goals} onChange={(e) => setF({ ...f, goals: e.target.value })} />
+        </Field>
+        <Field label="Notes (facultatif)">
+          <textarea className="input min-h-[60px]" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+        </Field>
         {initial.id && (
           <label className="flex items-center gap-2 text-sm text-ink-2">
             <input type="checkbox" checked={f.archived} onChange={(e) => setF({ ...f, archived: e.target.checked })} /> Archiver (ne plus proposer pour de nouvelles séances)
@@ -800,8 +1034,8 @@ function LessonDetail({ id, onClose, initialTab }: { id: string; onClose: () => 
       size="lg"
       title={
         <span className="flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full" style={{ background: l.student.color }} />
-          {l.student.name} — {l.subject}
+          <NameTag name={l.student.name} color={l.student.color} group={l.student.isGroup} size="lg" />
+          <span>{l.subject}</span>
         </span>
       }
       footer={
@@ -971,7 +1205,7 @@ function StudentDetail({ id, onClose, onEdit, onNewLesson, onOpenLesson }: { id:
   const done = s.lessons.filter((l) => l.status === "DONE");
   const upcoming = s.lessons.filter((l) => l.status === "PLANNED" && l.date >= today()).reverse();
   async function del() {
-    if (!(await confirm({ title: `Supprimer ${s!.name} ?`, message: "Toutes ses séances, préparations et ressources seront supprimées. Pour garder l'historique, préfère « Archiver ».", danger: true, confirmLabel: "Supprimer définitivement" }))) return;
+    if (!(await confirm({ title: `Supprimer ${s!.name} ?`, message: s!.isGroup ? "Le groupe et ses séances seront supprimés. Les élèves du groupe sont conservés." : "Toutes ses séances, préparations et ressources seront supprimées. Pour garder l'historique, préfère « Archiver ».", danger: true, confirmLabel: "Supprimer définitivement" }))) return;
     await api(`/api/students/${id}`, { method: "DELETE" });
     await refreshAll();
     toast("Élève supprimé·e");
@@ -982,7 +1216,7 @@ function StudentDetail({ id, onClose, onEdit, onNewLesson, onOpenLesson }: { id:
       open
       onClose={onClose}
       size="lg"
-      title={s.name}
+      title={<NameTag name={s.name} color={s.color} group={s.isGroup} size="lg" />}
       footer={
         <>
           <Button variant="ghost" className="mr-auto text-danger" onClick={del}><Trash2 className="h-4 w-4" /> Supprimer</Button>
@@ -996,6 +1230,26 @@ function StudentDetail({ id, onClose, onEdit, onNewLesson, onOpenLesson }: { id:
           <div><span className="text-muted">Niveau :</span> {s.level ?? "—"}</div>
           <div><span className="text-muted">Matières :</span> {s.subjects ?? "—"}</div>
         </div>
+        {s.isGroup && (
+          <div>
+            <span className="text-muted">Élèves du groupe :</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {s.members.map((m) => (
+                <NameTag key={m.id} name={m.name} color={m.color} />
+              ))}
+            </div>
+          </div>
+        )}
+        {!s.isGroup && s.groups.length > 0 && (
+          <div>
+            <span className="text-muted">Fait partie de :</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {s.groups.map((g) => (
+                <NameTag key={g.id} name={g.name} color={g.color} group />
+              ))}
+            </div>
+          </div>
+        )}
         {s.goals && <Notice>🎯 {s.goals}</Notice>}
         {s.notes && <p className="whitespace-pre-wrap text-ink-2">{s.notes}</p>}
         <div className="grid grid-cols-2 gap-3">
