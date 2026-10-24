@@ -23,11 +23,13 @@ export const INCOME_SOURCES: Record<string, string> = {
   OTHER: "Autre",
 };
 
+export const DEFAULT_CURRENCY = "TND";
+
 export const CURRENCIES: Record<string, string> = {
+  TND: "Dinar tunisien (DT)",
+  DZD: "Dinar algérien (DA)",
+  MAD: "Dirham marocain (DH)",
   EUR: "Euro (€)",
-  MAD: "Dirham marocain (MAD)",
-  DZD: "Dinar algérien (DZD)",
-  TND: "Dinar tunisien (TND)",
   CHF: "Franc suisse (CHF)",
   CAD: "Dollar canadien (CAD)",
   USD: "Dollar américain ($)",
@@ -44,7 +46,17 @@ export function lessonPrice(mode: string, rate: number | null | undefined, durat
   return null;
 }
 
-export function formatMoney(amount: number, currency = "EUR") {
+/** Symboles affichés pour les devises maghrébines (plus lisibles que les codes ISO). */
+const LOCAL_SYMBOLS: Record<string, string> = { TND: "DT", DZD: "DA", MAD: "DH" };
+
+export function formatMoney(amount: number, currency = DEFAULT_CURRENCY) {
+  const local = LOCAL_SYMBOLS[currency];
+  if (local) {
+    // Ex. 45 DT, 12,500 DT (le dinar tunisien compte 1000 millimes : jusqu'à 3 décimales)
+    const digits = currency === "TND" ? 3 : 2;
+    const n = new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: digits }).format(amount);
+    return `${n} ${local}`;
+  }
   try {
     return new Intl.NumberFormat("fr-FR", { style: "currency", currency, maximumFractionDigits: amount % 1 === 0 ? 0 : 2 }).format(amount);
   } catch {

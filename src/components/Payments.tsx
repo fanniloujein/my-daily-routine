@@ -7,7 +7,7 @@ import { NameTag } from "./NameTag";
 import { api, cx, fmtDayNum, refreshAll, useApi } from "@/lib/client";
 import { useMe } from "@/lib/hooks";
 import { today } from "@/lib/dates";
-import { BILLING_LABELS, PAYMENT_METHODS, addMonthsStr, formatMoney, monthLabel, type BillingMode } from "@/lib/billing";
+import { BILLING_LABELS, DEFAULT_CURRENCY, PAYMENT_METHODS, addMonthsStr, formatMoney, monthLabel, type BillingMode } from "@/lib/billing";
 
 export type FinanceRow = {
   id: string;
@@ -48,8 +48,10 @@ type Finance = {
 
 export function useMoney() {
   const { data: me } = useMe();
-  const currency = me?.settings.currency ?? "EUR";
-  return { currency, fmt: (n: number) => formatMoney(n, currency) };
+  const code = me?.settings.currency ?? DEFAULT_CURRENCY;
+  // « currency » = libellé court affiché dans les formulaires (DT, DA, DH, EUR…)
+  const currency = ({ TND: "DT", DZD: "DA", MAD: "DH" } as Record<string, string>)[code] ?? code;
+  return { currency, code, fmt: (n: number) => formatMoney(n, code) };
 }
 
 export function rateLabel(mode: BillingMode, rate: number | null, fmt: (n: number) => string) {

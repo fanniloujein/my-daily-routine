@@ -220,7 +220,7 @@ export const settingsSchema = z.object({
   germanWeeklyMinutes: z.coerce.number().int().min(0).max(3000).default(120),
   privacyMode: z.boolean().default(true),
   icsHideMedNames: z.boolean().default(true),
-  currency: z.string().regex(/^[A-Z]{3}$/).default("EUR"),
+  currency: z.string().regex(/^[A-Z]{3}$/).default("TND"),
 });
 
 export type UserSettings = z.infer<typeof settingsSchema>;
@@ -235,7 +235,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   germanWeeklyMinutes: 120,
   privacyMode: true,
   icsHideMedNames: true,
-  currency: "EUR",
+  currency: "TND",
 };
 
 export function readSettings(raw: unknown): UserSettings {

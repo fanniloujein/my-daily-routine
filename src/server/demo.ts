@@ -17,21 +17,21 @@ export async function loadDemo(userId: string) {
 
   // Élèves et séances
   const lina = await prisma.student.create({
-    data: { userId, name: "Lina (démo)", level: "3e", subjects: "Mathématiques", goals: "Préparer le brevet, reprendre confiance en géométrie", color: "#5b8def", billingMode: "SESSION", rate: 25, isDemo: true },
+    data: { userId, name: "Lina (démo)", level: "3e", subjects: "Mathématiques", goals: "Préparer le brevet, reprendre confiance en géométrie", color: "#5b8def", billingMode: "SESSION", rate: 30, isDemo: true },
   });
   const yanis = await prisma.student.create({
-    data: { userId, name: "Yanis (démo)", level: "Terminale", subjects: "Physique-chimie, Mathématiques", goals: "Bac : mécanique et suites", color: "#9b87f5", billingMode: "HOUR", rate: 30, isDemo: true },
+    data: { userId, name: "Yanis (démo)", level: "Terminale", subjects: "Physique-chimie, Mathématiques", goals: "Bac : mécanique et suites", color: "#9b87f5", billingMode: "HOUR", rate: 25, isDemo: true },
   });
   await createLesson(userId, { studentId: lina.id, date: addDays(t, 1), startTime: "16:00", endTime: "17:00", subject: "Mathématiques", chapter: "Théorème de Pythagore", prepMinutes: 45, prepDate: t, isDemo: true });
   await createLesson(userId, { studentId: yanis.id, date: addDays(t, 3), startTime: "17:30", endTime: "19:00", subject: "Physique", chapter: "Lois de Newton", prepMinutes: 60, prepDate: null, isDemo: true });
   const groupe = await prisma.student.create({
-    data: { userId, name: "Groupe révisions (démo)", isGroup: true, subjects: "Mathématiques", goals: "Révisions communes avant les contrôles", color: "#4fb3a9", billingMode: "MONTH", rate: 120, isDemo: true, members: { connect: [{ id: lina.id }, { id: yanis.id }] } },
+    data: { userId, name: "Groupe révisions (démo)", isGroup: true, subjects: "Mathématiques", goals: "Révisions communes avant les contrôles", color: "#4fb3a9", billingMode: "MONTH", rate: 100, isDemo: true, members: { connect: [{ id: lina.id }, { id: yanis.id }] } },
   });
   await createLesson(userId, { studentId: groupe.id, date: addDays(t, 5), startTime: "14:00", endTime: "15:30", subject: "Mathématiques", chapter: "Fonctions", prepMinutes: 60, prepDate: null, isDemo: true });
   const past = await prisma.lesson.create({
     data: {
       userId, studentId: lina.id, date: addDays(t, -4), startTime: "16:00", endTime: "17:00", subject: "Mathématiques", chapter: "Fractions", status: "DONE",
-      remarks: "Bonne progression sur les fractions. Encore des hésitations sur les priorités opératoires.", nextSteps: "Revoir les priorités opératoires dans 2 semaines.", price: 25, isDemo: true,
+      remarks: "Bonne progression sur les fractions. Encore des hésitations sur les priorités opératoires.", nextSteps: "Revoir les priorités opératoires dans 2 semaines.", price: 30, isDemo: true,
       prepItems: { create: [{ label: "Préparer une fiche de cours", done: true, order: 0 }, { label: "Préparer des exercices", done: true, order: 1 }] },
     },
   });
@@ -41,14 +41,14 @@ export async function loadDemo(userId: string) {
 
   // Paiements d'exemple : une séance passée de Lina réglée + un acompte freelance
   const pay = await prisma.income.create({
-    data: { userId, date: addDays(t, -4), amount: 25, source: "TUTORING", label: "Mathématiques — séance", studentId: lina.id, method: "CASH", isDemo: true },
+    data: { userId, date: addDays(t, -4), amount: 30, source: "TUTORING", label: "Mathématiques — séance", studentId: lina.id, method: "CASH", isDemo: true },
   });
   await prisma.lesson.update({ where: { id: past.id }, data: { incomeId: pay.id } });
   const past2 = await prisma.lesson.create({
-    data: { userId, studentId: yanis.id, date: addDays(t, -2), startTime: "17:30", endTime: "19:00", subject: "Physique", chapter: "Énergie", status: "DONE", price: 45, remarks: "Exercices bien réussis.", isDemo: true },
+    data: { userId, studentId: yanis.id, date: addDays(t, -2), startTime: "17:30", endTime: "19:00", subject: "Physique", chapter: "Énergie", status: "DONE", price: 37.5, remarks: "Exercices bien réussis.", isDemo: true },
   });
   void past2;
-  await prisma.income.create({ data: { userId, date: addDays(t, -6), amount: 600, source: "FREELANCE", label: "Acompte site vitrine — Boulangerie Martin (démo)", method: "TRANSFER", isDemo: true } });
+  await prisma.income.create({ data: { userId, date: addDays(t, -6), amount: 800, source: "FREELANCE", label: "Acompte site vitrine — Boulangerie Martin (démo)", method: "TRANSFER", isDemo: true } });
 
   // Projets freelance
   const bakery = await prisma.project.create({

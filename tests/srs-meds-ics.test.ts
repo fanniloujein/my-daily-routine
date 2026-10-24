@@ -88,3 +88,15 @@ describe("facturation des cours", () => {
     expect(addMonthsStr("2026-12", 1)).toBe("2027-01");
   });
 });
+
+import { formatMoney } from "@/lib/billing";
+describe("affichage des montants", () => {
+  it("dinar tunisien en DT (jusqu'à 3 décimales), autres devises lisibles", () => {
+    expect(formatMoney(45, "TND").replace(/\s/g, " ")).toBe("45 DT");
+    expect(formatMoney(12.5, "TND").replace(/\s/g, " ")).toBe("12,5 DT");
+    expect(formatMoney(1250, "TND").replace(/\s/g, " ")).toBe("1 250 DT");
+    expect(formatMoney(2500, "DZD").replace(/\s/g, " ")).toBe("2 500 DA");
+    expect(formatMoney(45).replace(/\s/g, " ")).toBe("45 DT");
+    expect(formatMoney(30, "EUR")).toContain("€");
+  });
+});
