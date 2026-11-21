@@ -1,0 +1,551 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Fanni's Tutoring Manager — modèle de données
+//
+// Conventions
+//  • Dates « calendrier » : chaîne "YYYY-MM-DD" ; heures : "HH:mm", dans le fuseau
+//    Africa/Tunis. Un cours à 17:00 reste à 17:00 quel que soit le serveur.
+//  • Montants : Decimal(12,3) — le dinar tunisien compte 1000 millimes.
+//    Les calculs se font en millimes entiers (src/lib/money.ts) : aucune erreur d'arrondi.
+//  • Finance : rien n'est supprimé. Une facture ou un paiement annulé reçoit `voidedAt`
+//    et une écriture d'annulation est ajoutée au journal (FinancialTransaction).
+//  • isDemo = true : données de démonstration fictives, supprimables en un clic.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── Administratrice ─────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  // Incrémenté à chaque changement de mot de passe : invalide les anciennes sessions.
+  tokenVersion Int      @default(0)
+  settings     Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ───────────── Référentiels ─────────────
+
+model Level {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  cycle     String    @default("OTHER") // PRIMARY | MIDDLE | SECONDARY | OTHER
+  order     Int       @default(0)
+  isDemo    Boolean   @default(false)
+  students  Student[]
+  sessions  Session[]
+  subjects  SubjectLevel[]
+  chapters  Chapter[]
+  documents Document[]
+  homework  Homework[]
+}
+
+model Subject {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  description     String?
+  color           String    @default("#8fb8e8")
+  defaultRate     Decimal?  @db.Decimal(12, 3)
+  defaultDuration Int       @default(60) // minutes
+  archived        Boolean   @default(false)
+  isDemo          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  levels          SubjectLevel[]
+  students        StudentSubject[]
+  sessions        Session[]
+  chapters        Chapter[]
+  documents       Document[]
+  homework        Homework[]
+  assessments     Assessment[]
+}
+
+model SubjectLevel {
+  subjectId String
+  levelId   String
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  level     Level   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@id([subjectId, levelId])
+}
+
+// ───────────── Élèves et parents ─────────────
+
+model Parent {
+  id        String    @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  notes     String?
+  isDemo    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  students  Student[]
+}
+
+model Student {
+  id               String   @id @default(cuid())
+  firstName        String
+  lastName         String
+  photo            String?  // data URL (image redimensionnée côté navigateur)
+  phone            String?
+  address          String?
+  school           String?
+  levelId          String?
+  parentId         String?
+  enrolledAt       String   // YYYY-MM-DD
+  courseType       String   @default("INDIVIDUAL") // INDIVIDUAL | GROUP
+  rate             Decimal  @db.Decimal(12, 3) // tarif par séance
+  sessionDuration  Int      @default(60)
+  sessionsPerWeek  Int      @default(1)
+  // PER_SESSION : chaque séance effectuée est facturée
+  // ADVANCE     : idem, mais payée d'avance (crédit) — alertes de crédit
+  // MONTHLY     : forfait mensuel (Package), séances non facturées individuellement
+  billingMode      String   @default("PER_SESSION")
+  availability     String?
+  notes            String?
+  strengths        String?
+  weaknesses       String?
+  difficulties     String?
+  goals            String?
+  color            String?
+  archived         Boolean  @default(false)
+  archivedAt       DateTime?
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  level         Level?               @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  parent        Parent?              @relation(fields: [parentId], references: [id], onDelete: SetNull)
+  subjects      StudentSubject[]
+  participations SessionParticipant[]
+  invoices      Invoice[]
+  payments      Payment[]
+  refunds       Refund[]
+  transactions  FinancialTransaction[]
+  packages      Package[]
+  progress      StudentProgress[]
+  assessments   Assessment[]
+  homework      Homework[]
+  documents     Document[]
+
+  @@index([archived])
+  @@index([lastName, firstName])
+}
+
+model StudentSubject {
+  studentId String
+  subjectId String
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, subjectId])
+}
+
+// ───────────── Séances ─────────────
+
+enum SessionStatus {
+  PLANNED          // Prévue
+  DONE             // Effectuée
+  CANCELLED        // Annulée
+  POSTPONED        // Reportée
+  STUDENT_ABSENT   // Absence de l'élève
+  TEACHER_ABSENT   // Absence de l'enseignante
+}
+
+model Session {
+  id                 String        @id @default(cuid())
+  title              String?       // nom du groupe ou intitulé libre
+  subjectId          String?
+  levelId            String?
+  date               String        // YYYY-MM-DD
+  startTime          String        // HH:mm
+  endTime            String        // HH:mm
+  location           String?
+  chapter            String?
+  objectives         String?
+  preparationNeeded  String?
+  prepared           Boolean       @default(false)
+  notes              String?
+  report             String?       // remarques après la séance (suivi pédagogique)
+  status             SessionStatus @default(PLANNED)
+  // Absence de dernière minute facturable (sinon : non facturée)
+  lateAbsenceBillable Boolean      @default(false)
+  seriesId           String?       // séances générées ensemble (récurrence)
+  postponedToId      String?       // séance de remplacement si reportée
+  completedAt        DateTime?
+  isDemo             Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  subject      Subject?             @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  level        Level?               @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  participants SessionParticipant[]
+  lessons      SessionLesson[]
+  invoices     Invoice[]
+
+  @@index([date])
+  @@index([status])
+  @@index([seriesId])
+}
+
+model SessionParticipant {
+  sessionId String
+  studentId String
+  price     Decimal @db.Decimal(12, 3) // tarif appliqué à cet élève pour cette séance
+  absent    Boolean @default(false)    // absence individuelle dans une séance collective
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, studentId])
+  @@index([studentId])
+}
+
+// ───────────── Finance ─────────────
+
+// Forfait mensuel d'un élève (mode MONTHLY)
+model Package {
+  id            String    @id @default(cuid())
+  studentId     String
+  name          String    @default("Forfait mensuel")
+  amount        Decimal   @db.Decimal(12, 3)
+  sessionsCount Int?      // nombre de séances prévues (indicatif)
+  startMonth    String    // YYYY-MM
+  endMonth      String?   // YYYY-MM (inclus) ; null = sans fin
+  active        Boolean   @default(true)
+  notes         String?
+  isDemo        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  student       Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  invoices      Invoice[]
+}
+
+// Une créance : séance facturée, forfait du mois ou correction.
+// Unicité (séance, élève) et (forfait, mois) garantie par index partiels (factures non annulées).
+model Invoice {
+  id          String    @id @default(cuid())
+  studentId   String
+  kind        String    // SESSION | PACKAGE | ADJUSTMENT
+  sessionId   String?
+  packageId   String?
+  month       String?   // YYYY-MM pour un forfait
+  date        String    // date de la créance (YYYY-MM-DD)
+  label       String
+  amount      Decimal   @db.Decimal(12, 3)
+  voidedAt    DateTime?
+  voidReason  String?
+  isDemo      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  session     Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  package     Package?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  targetedBy  PaymentTarget[]
+
+  @@index([studentId, voidedAt])
+  @@index([date])
+}
+
+// Argent reçu (PAYMENT ou ADVANCE) ou remise accordée (DISCOUNT, non encaissée).
+// La part non affectée d'un versement constitue le crédit disponible :
+// une avance n'est jamais comptée à la fois comme paiement et comme crédit.
+model Payment {
+  id          String    @id @default(cuid())
+  studentId   String
+  kind        String    // PAYMENT | ADVANCE | DISCOUNT
+  date        String    // YYYY-MM-DD
+  amount      Decimal   @db.Decimal(12, 3)
+  method      String    @default("CASH") // CASH | TRANSFER | OTHER
+  reason      String?   // motif
+  reference   String?
+  notes       String?
+  receiptNo   String?   @unique
+  voidedAt    DateTime?
+  voidReason  String?
+  isDemo      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  targets     PaymentTarget[]
+
+  @@index([studentId, voidedAt])
+  @@index([date])
+}
+
+// Paiement groupé : factures que le versement doit régler en priorité.
+model PaymentTarget {
+  paymentId String
+  invoiceId String
+  order     Int     @default(0)
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@id([paymentId, invoiceId])
+}
+
+// Remboursement d'une partie du crédit disponible.
+model Refund {
+  id         String    @id @default(cuid())
+  studentId  String
+  date       String
+  amount     Decimal   @db.Decimal(12, 3)
+  method     String    @default("CASH")
+  reason     String?
+  voidedAt   DateTime?
+  voidReason String?
+  isDemo     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+}
+
+// Journal chronologique immuable de toutes les opérations financières.
+model FinancialTransaction {
+  id           String   @id @default(cuid())
+  studentId    String
+  type         String   // ADVANCE_RECEIVED | PAYMENT_RECEIVED | DISCOUNT | SESSION_BILLED | PACKAGE_BILLED
+                        // | ADJUSTMENT | CREDIT_USED | REFUND | INVOICE_VOIDED | PAYMENT_VOIDED | REFUND_VOIDED
+  amount       Decimal  @db.Decimal(12, 3)
+  date         String   // date métier
+  description  String
+  invoiceId    String?
+  paymentId    String?
+  refundId     String?
+  sessionId    String?
+  // Situation de l'élève juste après l'opération
+  dueAfter     Decimal  @db.Decimal(12, 3)
+  creditAfter  Decimal  @db.Decimal(12, 3)
+  isDemo       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  student      Student  @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@index([studentId, createdAt])
+  @@index([createdAt])
+}
+
+// ───────────── Pédagogie ─────────────
+
+model Chapter {
+  id        String    @id @default(cuid())
+  subjectId String
+  levelId   String?
+  title     String
+  order     Int       @default(0)
+  isDemo    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  subject   Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  level     Level?    @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  lessons   Lesson[]
+  progress  StudentProgress[]
+  documents Document[]
+}
+
+// Préparation pédagogique (leçon)
+model Lesson {
+  id          String   @id @default(cuid())
+  chapterId   String
+  title       String
+  objectives  String?
+  content     String?  // explication du cours
+  links       String?  // un lien par ligne
+  notes       String?
+  status      String   @default("DRAFT") // DRAFT | READY
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  chapter     Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  exercises   Exercise[]
+  sessions    SessionLesson[]
+  documents   Document[]
+  homework    Homework[]
+}
+
+model Exercise {
+  id         String  @id @default(cuid())
+  lessonId   String
+  title      String
+  statement  String?
+  correction String?
+  difficulty String  @default("MEDIUM") // EASY | MEDIUM | HARD
+  order      Int     @default(0)
+  isDemo     Boolean @default(false)
+  lesson     Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+}
+
+model SessionLesson {
+  sessionId String
+  lessonId  String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, lessonId])
+}
+
+model Homework {
+  id        String   @id @default(cuid())
+  title     String
+  type      String   @default("TO_SUBMIT") // TO_PREPARE | TO_CORRECT | TO_PRINT | REVISION | MOCK_EXAM | TO_SUBMIT
+  studentId String?
+  subjectId String?
+  levelId   String?
+  lessonId  String?
+  dueDate   String?
+  status    String   @default("PENDING") // PENDING | DONE
+  grade     Decimal? @db.Decimal(6, 2)
+  maxGrade  Decimal? @db.Decimal(6, 2)
+  notes     String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  level     Level?   @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([status, dueDate])
+}
+
+// Avancement d'un élève sur un chapitre
+model StudentProgress {
+  id        String   @id @default(cuid())
+  studentId String
+  chapterId String
+  status    String   @default("IN_PROGRESS") // DONE | IN_PROGRESS | TO_REVIEW
+  notes     String?
+  isDemo    Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  chapter   Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, chapterId])
+}
+
+// Notes de devoirs et résultats d'examens
+model Assessment {
+  id        String   @id @default(cuid())
+  studentId String
+  subjectId String?
+  kind      String   @default("HOMEWORK") // HOMEWORK | EXAM | MOCK_EXAM | QUIZ
+  title     String
+  date      String
+  score     Decimal  @db.Decimal(6, 2)
+  maxScore  Decimal  @default(20) @db.Decimal(6, 2)
+  notes     String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+
+  @@index([studentId, date])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("OTHER") // PDF | WORD | EXCEL | IMAGE | EXERCISE | CORRECTION | EXAM | REVISION | LINK | OTHER
+  mimeType  String?
+  size      Int?
+  data      Bytes?   // contenu du fichier (stocké en base : sauvegarde simple, aucun service externe)
+  url       String?  // ou lien externe
+  tags      String?
+  studentId String?
+  subjectId String?
+  levelId   String?
+  chapterId String?
+  lessonId  String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  level     Level?   @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  chapter   Chapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([name])
+}
+
+// ───────────── Organisation ─────────────
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  category    String   @default("OTHER") // PREP | CORRECTION | STUDENTS | ADMIN | PRO_DEV | PERSONAL | SPORT | REST | OTHER
+  priority    String   @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  status      String   @default("TODO")   // TODO | IN_PROGRESS | DONE | POSTPONED
+  dueDate     String?
+  time        String?  // HH:mm
+  duration    Int?     // minutes estimées
+  order       Int      @default(0)
+  completedAt DateTime?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, dueDate])
+}
+
+// Temps consacré à une activité (préparation, correction, administratif, personnel, repos…)
+// Le temps de cours est calculé automatiquement à partir des séances effectuées.
+model TimeEntry {
+  id        String   @id @default(cuid())
+  date      String
+  category  String   // PREP | CORRECTION | ADMIN | PERSONAL | REST | FREE | OTHER
+  minutes   Int
+  note      String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+// Disponibilités hebdomadaires de l'enseignante
+model Availability {
+  id        String  @id @default(cuid())
+  weekday   Int     // 1 = lundi … 7 = dimanche
+  startTime String
+  endTime   String
+  isDemo    Boolean @default(false)
+}
+
+// Événement personnel, période de repos ou pause programmée
+model PersonalEvent {
+  id         String   @id @default(cuid())
+  title      String
+  kind       String   @default("PERSONAL") // PERSONAL | REST | BREAK
+  date       String
+  startTime  String
+  endTime    String
+  weeklyUntil String? // répétition hebdomadaire jusqu'à cette date (incluse)
+  notes      String?
+  isDemo     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([date])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  key       String    @unique // clé de déduplication (ex. "unprepared:<sessionId>")
+  type      String
+  severity  String    @default("INFO") // INFO | WARNING | DANGER
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  dismissed Boolean   @default(false)
+  resolved  Boolean   @default(false) // la condition n'est plus vraie
+  createdAt DateTime  @default(now())
+
+  @@index([dismissed, resolved])
+}
+
+// Compteur des numéros de reçus (R-2026-0001…)
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}

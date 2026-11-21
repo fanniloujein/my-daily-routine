@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Palette : bleu pastel (principal), bleu marine doux (titres, navigation), jaune pastel (important),
+   blanc cassé (fond), beige clair (sections secondaires), vert doux (payé), rouge doux (retards). */
+:root {
+  --font-sans: "Inter Variable";
+  --font-display: "Nunito";
+  --bg: 250 248 244;          /* blanc cassé */
+  --surface: 255 255 255;
+  --surface-2: 244 241 235;
+  --beige: 241 234 222;       /* beige clair */
+  --ink: 30 42 74;            /* bleu marine doux */
+  --ink-2: 68 80 112;
+  --muted: 118 126 148;
+  --line: 230 225 216;
+  --primary: 143 184 232;     /* bleu pastel */
+  --primary-strong: 74 122 196;
+  --primary-soft: 226 237 250;
+  --navy: 37 52 92;
+  --accent: 214 172 46;       /* jaune pastel (texte) */
+  --accent-soft: 252 241 199; /* jaune pastel (fond) */
+  --success: 52 140 96;
+  --success-soft: 222 243 230;
+  --warning: 196 128 30;
+  --warning-soft: 252 238 214;
+  --danger: 200 84 84;
+  --danger-soft: 251 228 226;
+  --shadow: 30 42 74;
+  /* Séries de graphiques (palette catégorielle validée, ordre fixe) */
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300; --s-other: #9aa3b5;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: 15 20 33;
+  --surface: 22 29 46;
+  --surface-2: 30 38 58;
+  --beige: 38 40 50;
+  --ink: 230 236 248;
+  --ink-2: 190 200 222;
+  --muted: 140 152 178;
+  --line: 45 55 80;
+  --primary: 120 165 225;
+  --primary-strong: 150 190 240;
+  --primary-soft: 34 50 82;
+  --navy: 18 24 40;
+  --accent: 240 210 110;
+  --accent-soft: 70 60 30;
+  --success: 110 200 150;
+  --success-soft: 25 60 45;
+  --warning: 235 180 90;
+  --warning-soft: 70 50 20;
+  --danger: 240 130 130;
+  --danger-soft: 75 32 36;
+  --shadow: 0 0 0;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #0ca30c; --s-other: #6b7488;
+  color-scheme: dark;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-bg text-ink antialiased; font-feature-settings: "cv11", "ss01"; }
+  ::selection { background: rgb(var(--primary) / 0.35); }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+}
+
+@layer components {
+  .card { @apply rounded-2xl border border-line/80 bg-surface shadow-card; }
+  .section-title { @apply font-display text-[15px] font-semibold text-ink; }
+  .input {
+    @apply h-10 w-full rounded-xl border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted/70 transition
+      focus:border-primary-strong/60 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-60;
+  }
+  textarea.input { @apply h-auto min-h-[84px] py-2 leading-relaxed; }
+  select.input { @apply pr-8; }
+  .label { @apply mb-1.5 block text-xs font-medium text-ink-2; }
+  .table-wrap { @apply overflow-x-auto rounded-xl border border-line; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply whitespace-nowrap bg-surface-2/70 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted; }
+  .table td { @apply border-t border-line px-3 py-2.5 align-middle; }
+  .table tbody tr { @apply transition hover:bg-surface-2/50; }
+  .num { @apply text-right tabular-nums; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium; }
+}
+
+/* ───── FullCalendar aux couleurs de l'application ───── */
+.fc { --fc-border-color: rgb(var(--line)); --fc-page-bg-color: rgb(var(--surface)); --fc-neutral-bg-color: rgb(var(--surface-2));
+  --fc-today-bg-color: rgb(var(--accent-soft) / 0.45); --fc-now-indicator-color: rgb(var(--danger)); --fc-event-border-color: transparent;
+  --fc-button-bg-color: rgb(var(--surface)); --fc-button-border-color: rgb(var(--line)); --fc-button-text-color: rgb(var(--ink));
+  --fc-button-hover-bg-color: rgb(var(--surface-2)); --fc-button-hover-border-color: rgb(var(--line));
+  --fc-button-active-bg-color: rgb(var(--primary-soft)); --fc-button-active-border-color: rgb(var(--primary)); font-size: 13px; }
+.fc .fc-toolbar-title { font-size: 1.05rem; font-weight: 600; text-transform: capitalize; }
+.fc .fc-button { border-radius: .7rem; padding: .35rem .7rem; font-weight: 500; box-shadow: none !important; text-transform: none; }
+.fc .fc-button-primary:not(:disabled).fc-button-active { color: rgb(var(--primary-strong)); }
+.fc .fc-col-header-cell-cushion, .fc .fc-daygrid-day-number { color: rgb(var(--ink-2)); text-transform: capitalize; }
+.fc .fc-timegrid-slot { height: 2.1rem; }
+.fc .fc-event { border-radius: .55rem; padding: 1px 3px; cursor: pointer; }
+.fc .fc-bg-event { opacity: 1; }
+.fc .ev-availability { background: rgb(var(--success-soft) / .55) !important; }
+.fc .ev-rest { background: repeating-linear-gradient(135deg, rgb(var(--primary-soft)), rgb(var(--primary-soft)) 6px, rgb(var(--surface-2)) 6px, rgb(var(--surface-2)) 12px) !important; color: rgb(var(--ink-2)) !important; }
+.fc .ev-cancelled { opacity: .55; text-decoration: line-through; }
+.fc .ev-busy-day { background: rgb(var(--warning-soft) / .5); }
+.fc .ev-overloaded-day { background: rgb(var(--danger-soft) / .5); }
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  body { background: white; }
+}

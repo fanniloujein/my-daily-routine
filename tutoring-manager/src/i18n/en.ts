@@ -1,0 +1,20 @@
+import type { fr } from "./fr";
+export const en: Partial<Record<keyof typeof fr, string>> = {
+  "nav.dashboard": "Dashboard",
+  "nav.students": "Students",
+  "nav.sessions": "Sessions",
+  "nav.calendar": "Calendar",
+  "nav.week": "Plan my week",
+  "nav.finance": "Finance",
+  "nav.journal": "Ledger",
+  "nav.preparations": "Lesson plans",
+  "nav.homework": "Homework",
+  "nav.documents": "Documents",
+  "nav.subjects": "Subjects & levels",
+  "nav.tasks": "Tasks",
+  "nav.time": "Time & productivity",
+  "nav.reports": "Reports",
+  "nav.notifications": "Notifications",
+  "nav.settings": "Settings",
+  "action.logout": "Log out",
+};
