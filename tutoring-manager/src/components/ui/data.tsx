@@ -61,9 +61,9 @@ export function Stat({ label, value, icon, tone = "info", hint, href }: { label:
     <div className="card flex h-full items-start gap-3 p-4 transition hover:-translate-y-0.5 hover:shadow-pop">
       {icon && <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", TONES[tone])}>{icon}</div>}
       <div className="min-w-0">
-        <div className="truncate text-xs font-medium text-muted">{label}</div>
+        <div className="line-clamp-2 text-xs font-medium leading-snug text-muted">{label}</div>
         <div className="mt-0.5 font-display text-xl font-semibold tabular-nums text-ink">{value}</div>
-        {hint && <div className="mt-0.5 truncate text-xs text-muted">{hint}</div>}
+        {hint && <div className="mt-0.5 line-clamp-2 text-xs text-muted">{hint}</div>}
       </div>
     </div>
   );
