@@ -1,0 +1,644 @@
+// Fanni's Education — schéma de données
+// Montants : entiers en millimes (1 TND = 1000 millimes).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum Locale {
+  FR
+  AR
+}
+
+enum TeacherStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum LevelCategory {
+  PRIMARY
+  LOWER_SECONDARY
+  SECONDARY
+  BACCALAUREATE
+  HIGHER_EDUCATION
+  PROFESSIONAL_TRAINING
+}
+
+enum AccessLevel {
+  FREE
+  PREMIUM
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ResourceType {
+  REVISION_SHEET
+  EXERCISES
+  CORRECTION
+  SUMMARY
+  METHODOLOGY
+  OTHER
+}
+
+enum QuestionType {
+  SINGLE_CHOICE
+  MULTIPLE_CHOICE
+}
+
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  POSTAL_TRANSFER
+  MOBILE_WALLET
+  CASH
+  ONLINE_GATEWAY
+}
+
+enum PaymentPurpose {
+  SUBSCRIPTION
+  BOOKING
+}
+
+enum LessonMode {
+  ONLINE
+  IN_PERSON
+}
+
+enum BookingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  SYSTEM
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_EXPIRED
+  PAYMENT_REJECTED
+  PAYMENT_REFUNDED
+  BOOKING_REQUESTED
+  BOOKING_ACCEPTED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  BOOKING_COMPLETED
+  TEACHER_APPROVED
+  TEACHER_REJECTED
+  REVIEW_RECEIVED
+}
+
+// ─────────────────────────── Utilisateurs ───────────────────────────
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  role           Role       @default(STUDENT)
+  status         UserStatus @default(ACTIVE)
+  locale         Locale     @default(FR)
+  /// Incrémenté pour révoquer toutes les sessions (changement de mot de passe, suspension).
+  sessionVersion Int        @default(0)
+  lastLoginAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  studentProfile    StudentProfile?
+  teacherProfile    TeacherProfile?
+  subscriptions     Subscription[]
+  payments          Payment[]           @relation("PaymentUser")
+  verifiedPayments  Payment[]           @relation("PaymentVerifier")
+  notifications     Notification[]
+  quizAttempts      QuizAttempt[]
+  lessonProgress    LessonProgress[]
+  studentBookings   Booking[]           @relation("StudentBookings")
+  reviews           Review[]
+  courses           Course[]
+  resources         EducationalResource[]
+  quizzes           Quiz[]
+  auditLogs         AuditLog[]
+
+  @@index([role, status])
+  @@index([createdAt])
+}
+
+model StudentProfile {
+  id            String            @id @default(cuid())
+  userId        String            @unique
+  levelId       String?
+  city          String?
+  school        String?
+  guardianPhone String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  user  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level EducationalLevel? @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  @@index([levelId])
+}
+
+model TeacherProfile {
+  id                    String        @id @default(cuid())
+  userId                String        @unique
+  status                TeacherStatus @default(PENDING)
+  headline              String?
+  bio                   String?
+  city                  String?
+  yearsExperience       Int           @default(0)
+  offersOnline          Boolean       @default(true)
+  offersInPerson        Boolean       @default(false)
+  onlinePriceMillimes   Int?
+  inPersonPriceMillimes Int?
+  inPersonArea          String?
+  lessonDurationMinutes Int           @default(60)
+  isDemo                Boolean       @default(false)
+  ratingAvg             Float         @default(0)
+  ratingCount           Int           @default(0)
+  validatedAt           DateTime?
+  rejectionReason       String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects       TeacherSubject[]
+  availabilities TeacherAvailability[]
+  bookings       Booking[]
+  reviews        Review[]
+
+  @@index([status])
+  @@index([city])
+}
+
+model TeacherSubject {
+  teacherId String
+  subjectId String
+  createdAt DateTime @default(now())
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+// ─────────────────────────── Catalogue ───────────────────────────
+
+model EducationalLevel {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  name        String
+  nameAr      String?
+  description String?
+  category    LevelCategory @default(BACCALAUREATE)
+  order       Int           @default(0)
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  subjects Subject[]
+  students StudentProfile[]
+  plans    SubscriptionPlan[]
+
+  @@index([isActive, order])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  levelId     String
+  slug        String
+  name        String
+  nameAr      String?
+  description String?
+  icon        String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  level     EducationalLevel      @relation(fields: [levelId], references: [id], onDelete: Restrict)
+  courses   Course[]
+  resources EducationalResource[]
+  quizzes   Quiz[]
+  teachers  TeacherSubject[]
+  bookings  Booking[]
+
+  @@unique([levelId, slug])
+  @@index([levelId, isActive, order])
+}
+
+model Course {
+  id          String        @id @default(cuid())
+  subjectId   String
+  authorId    String?
+  slug        String
+  title       String
+  summary     String?
+  accessLevel AccessLevel   @default(PREMIUM)
+  status      PublishStatus @default(DRAFT)
+  order       Int           @default(0)
+  isDemo      Boolean       @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  subject   Subject               @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  author    User?                 @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  lessons   Lesson[]
+  resources EducationalResource[]
+  quizzes   Quiz[]
+
+  @@unique([subjectId, slug])
+  @@index([subjectId, status, order])
+  @@index([authorId])
+}
+
+model Lesson {
+  id              String      @id @default(cuid())
+  courseId        String
+  title           String
+  /// Contenu en texte structuré (paragraphes, titres « ## », listes « - »).
+  content         String
+  order           Int         @default(0)
+  durationMinutes Int?
+  /// Une leçon FREE d'un cours PREMIUM sert d'aperçu gratuit.
+  accessLevel     AccessLevel @default(PREMIUM)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  course   Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress LessonProgress[]
+
+  @@index([courseId, order])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  completedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([lessonId])
+}
+
+model StoredFile {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String
+  size      Int
+  sha256    String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  resources EducationalResource[]
+
+  @@index([sha256])
+}
+
+model EducationalResource {
+  id            String        @id @default(cuid())
+  subjectId     String
+  courseId      String?
+  uploadedById  String?
+  fileId        String?
+  title         String
+  description   String?
+  type          ResourceType  @default(REVISION_SHEET)
+  accessLevel   AccessLevel   @default(PREMIUM)
+  status        PublishStatus @default(DRAFT)
+  isDemo        Boolean       @default(false)
+  downloadCount Int           @default(0)
+  publishedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  subject    Subject     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  course     Course?     @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  uploadedBy User?       @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  file       StoredFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([subjectId, status, type])
+  @@index([courseId])
+  @@index([uploadedById])
+}
+
+// ─────────────────────────── QCM ───────────────────────────
+
+model Quiz {
+  id               String        @id @default(cuid())
+  subjectId        String
+  courseId         String?
+  authorId         String?
+  title            String
+  description      String?
+  accessLevel      AccessLevel   @default(PREMIUM)
+  status           PublishStatus @default(DRAFT)
+  timeLimitMinutes Int?
+  passingScore     Int           @default(50)
+  isDemo           Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  course    Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  author    User?         @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  @@index([subjectId, status])
+  @@index([courseId])
+}
+
+model Question {
+  id             String       @id @default(cuid())
+  quizId         String
+  prompt         String
+  type           QuestionType @default(SINGLE_CHOICE)
+  /// Liste ordonnée des propositions (string[]).
+  options        Json
+  /// Index (0-based) des bonnes propositions — jamais envoyé au client avant soumission.
+  correctOptions Int[]
+  explanation    String?
+  points         Int          @default(1)
+  order          Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, order])
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  userId      String
+  /// { [questionId]: number[] }
+  answers     Json
+  score       Int
+  maxScore    Int
+  percentage  Float
+  startedAt   DateTime
+  completedAt DateTime @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@index([quizId])
+}
+
+// ─────────────────────────── Abonnements & paiements ───────────────────────────
+
+model SubscriptionPlan {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  nameAr        String?
+  description   String?
+  descriptionAr String?
+  priceMillimes Int
+  currency      String   @default("TND")
+  durationDays  Int
+  /// Avantages affichés (string[]), FR et AR.
+  features      Json     @default("[]")
+  featuresAr    Json     @default("[]")
+  /// null = tous les niveaux.
+  levelId       String?
+  isActive      Boolean  @default(true)
+  isFeatured    Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  level         EducationalLevel? @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  subscriptions Subscription[]
+
+  @@index([isActive, order])
+}
+
+model Subscription {
+  id                String             @id @default(cuid())
+  userId            String
+  planId            String
+  status            SubscriptionStatus @default(PENDING_PAYMENT)
+  priceMillimes     Int
+  currency          String             @default("TND")
+  startsAt          DateTime?
+  endsAt            DateTime?
+  activatedAt       DateTime?
+  cancelledAt       DateTime?
+  expiryReminderAt  DateTime?
+  notes             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  payments Payment[]
+
+  @@index([userId, status])
+  @@index([status, endsAt])
+}
+
+model Payment {
+  id                String         @id @default(cuid())
+  userId            String
+  purpose           PaymentPurpose
+  subscriptionId    String?
+  bookingId         String?
+  amountMillimes    Int
+  currency          String         @default("TND")
+  method            PaymentMethod
+  status            PaymentStatus  @default(PENDING)
+  /// Référence déclarée par l'élève (n° de virement, de transaction…).
+  reference         String?
+  payerNote         String?
+  /// "manual" pour le MVP ; nom de la passerelle plus tard.
+  provider          String         @default("manual")
+  providerPaymentId String?
+  verifiedById      String?
+  verifiedAt        DateTime?
+  rejectionReason   String?
+  refundedAt        DateTime?
+  refundReason      String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user         User          @relation("PaymentUser", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy   User?         @relation("PaymentVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  booking      Booking?      @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerPaymentId])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([subscriptionId])
+  @@index([bookingId])
+}
+
+// ─────────────────────────── Réservations ───────────────────────────
+
+model TeacherAvailability {
+  id          String      @id @default(cuid())
+  teacherId   String
+  /// 0 = dimanche … 6 = samedi (fuseau Africa/Tunis)
+  dayOfWeek   Int
+  startMinute Int
+  endMinute   Int
+  /// null = en ligne et présentiel
+  mode        LessonMode?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, dayOfWeek])
+}
+
+model Booking {
+  id              String        @id @default(cuid())
+  studentId       String
+  teacherId       String
+  subjectId       String
+  mode            LessonMode
+  startsAt        DateTime
+  endsAt          DateTime
+  status          BookingStatus @default(PENDING)
+  priceMillimes   Int
+  currency        String        @default("TND")
+  studentNote     String?
+  teacherNote     String?
+  rejectionReason String?
+  cancelReason    String?
+  cancelledByRole Role?
+  meetingLink     String?
+  location        String?
+  respondedAt     DateTime?
+  cancelledAt     DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  student  User           @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher  TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject  Subject        @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  review   Review?
+  payments Payment[]
+
+  @@index([teacherId, startsAt])
+  @@index([studentId, startsAt])
+  @@index([status, startsAt])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  studentId String
+  teacherId String
+  rating    Int
+  comment   String?
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  student User           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, createdAt])
+}
+
+// ─────────────────────────── Plateforme ───────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  handledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([handledAt, createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

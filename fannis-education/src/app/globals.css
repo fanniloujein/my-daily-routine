@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-white text-ink antialiased;
+  }
+  html[dir="rtl"] body {
+    font-family: "Noto Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand-400 ring-offset-2;
+  }
+  h1, h2, h3 {
+    @apply text-ink;
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .input {
+    @apply block w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm text-ink shadow-soft placeholder:text-gray-400 transition focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-surface disabled:text-ink-muted;
+  }
+  .input-error {
+    @apply border-red-300 focus:border-red-400 focus:ring-red-100;
+  }
+  .prose-lesson h2 {
+    @apply mt-8 mb-3 text-lg font-semibold;
+  }
+  .prose-lesson p {
+    @apply my-3 leading-7 text-ink-soft;
+  }
+  .prose-lesson ul {
+    @apply my-3 list-disc space-y-1.5 ps-6 text-ink-soft;
+  }
+  .prose-lesson strong {
+    @apply font-semibold text-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; animation: none !important; }
+}
